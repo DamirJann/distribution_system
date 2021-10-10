@@ -1,0 +1,24 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/damire/space/distibution_system/lab1/main.c
+stdio.h
+-
+unistd.h
+-
+stdlib.h
+-
+stdint.h
+-
+inttypes.h
+-
+stdatomic.h
+-
+threads.h
+-
+
