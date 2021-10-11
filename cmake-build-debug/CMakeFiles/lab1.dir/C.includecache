@@ -6,6 +6,12 @@
 
 #IncludeRegexTransform: 
 
+/home/damire/space/distibution_system/lab1/ipc.h
+stddef.h
+-
+stdint.h
+-
+
 /home/damire/space/distibution_system/lab1/main.c
 stdio.h
 -
@@ -15,6 +21,8 @@ stdlib.h
 -
 pa1.h
 /home/damire/space/distibution_system/lab1/pa1.h
+ipc.h
+/home/damire/space/distibution_system/lab1/ipc.h
 
 /home/damire/space/distibution_system/lab1/pa1.h
 
