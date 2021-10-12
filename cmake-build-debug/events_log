@@ -1,12 +1,8 @@
-Process 0 (pid 15115, parent 15111) has STARTED
-Process 0 received all STARTED messages
-Process 0 has DONE its work
-Process 0 received all DONE messages
-Process 1 (pid 15116, parent 15111) has STARTED
+Process 1 (pid  9237, parent  9231) has STARTED
 Process 1 received all STARTED messages
 Process 1 has DONE its work
 Process 1 received all DONE messages
-Process 2 (pid 15117, parent 15111) has STARTED
-Process 2 received all STARTED messages
-Process 2 has DONE its work
-Process 2 received all DONE messages
+Process 0 (pid  9236, parent  9231) has STARTED
+Process 0 received all STARTED messages
+Process 0 has DONE its work
+Process 0 received all DONE messages
