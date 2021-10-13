@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <time.h>
 #include "pa1.h"
 #include "ipc.h"
-
 
 const char *EVENT_LOG_FILE_NAME = "events_log";
 const char *PIPE_LOG_FILE_NAME = "pipes_log";
@@ -14,24 +14,19 @@ struct log_files {
 };
 
 
-union custom_pipe {
-    int pipefds[2];
-    struct {
-        int read_fds;
-        int write_fds;
-    };
+struct custom_pipe {
+    int read_fds;
+    int write_fds;
 };
 
 struct pipe_table {
-    union custom_pipe* with_parent;
     local_id size;
-    union custom_pipe **data;
+    struct custom_pipe **data;
 };
 
 
-struct send_info{
-    local_id local_pid;
-
+struct process_info {
+    local_id id;
     struct pipe_table pipe_table;
 };
 
@@ -41,27 +36,23 @@ struct send_info{
 struct pipe_table create_pipe_table(local_id process_count) {
     struct pipe_table pipe_table;
     pipe_table.size = process_count;
-    pipe_table.data = malloc(sizeof(union custom_pipe *) * process_count);
+    pipe_table.data = malloc(sizeof(struct custom_pipe *) * process_count);
     for (size_t i = 0; i < process_count; i++) {
-        pipe_table.data[i] = malloc(sizeof(union custom_pipe) * process_count);
+        pipe_table.data[i] = malloc(sizeof(struct custom_pipe) * process_count);
     }
-    pipe_table.with_parent = malloc(sizeof(union custom_pipe) * process_count);
     return pipe_table;
 }
 
 void destroy_pipe_table(struct pipe_table pipe_table) {
-    // TODO implement this
+    for (local_id i = 0; i < pipe_table.size; i++){
+        free(pipe_table.data[i]);
+    }
+    free(pipe_table.data);
 }
 
-void print_pipes_table(FILE* file, struct pipe_table pipe_table) {
+void print_pipes_table(FILE *file, struct pipe_table pipe_table) {
     fprintf(file, "\n");
-    fprintf(file, "PARENT-SUBPROCESS:\n");
-    for (size_t i = 0; i < pipe_table.size; i++) {
-        fprintf(file, "r: %d, w: %d | ", pipe_table.with_parent[i].read_fds, pipe_table.with_parent[i].write_fds);
-    }
-    fprintf(file, "\n\n");
 
-    fprintf(file, "SUBPROCESS-SUBPROCESS:\n");
     for (size_t i = 0; i < pipe_table.size; i++) {
         for (size_t j = 0; j < pipe_table.size; j++) {
             fprintf(file, "r: %d, w: %d | ", pipe_table.data[i][j].read_fds, pipe_table.data[i][j].write_fds);
@@ -85,59 +76,76 @@ int open_log_files(struct log_files *log_files) {
 int close_log_files(struct log_files log_files) {
     if (fclose(log_files.event_log) != 0) {
         return -1;
-    };
+    }
     if (fclose(log_files.pipe_log) != 0) {
         return -1;
-    };
+    }
     return 0;
+}
+
+Message create_start_message(){
+    return (Message) {
+        .s_header.s_type = STARTED,
+        .s_header.s_local_time = (int16_t)time(NULL),
+        .s_header.s_magic = MESSAGE_MAGIC,
+        .s_header.s_payload_len = 0,
+    };
+}
+
+Message create_done_message(){
+    return (Message) {
+            .s_header.s_type = DONE,
+            .s_header.s_local_time = (int16_t)time(NULL),
+            .s_header.s_magic = MESSAGE_MAGIC,
+            .s_header.s_payload_len = 0,
+    };
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int send_multicast(void *self, const Message *msg) {
-    struct send_info send_info = *(struct send_info*) self;
+    struct pipe_table pipe_table = (*(struct process_info *) self).pipe_table;
+    local_id from = (*(struct process_info *) self).id;
 
-    for (local_id i = 0; i < send_info.pipe_table.size; i++) {
-        if (i != send_info.local_pid) {
+    for (local_id i = 0; i < pipe_table.size; i++) {
+        if (i != from) {
             if (send(self, i, msg) == -1) {
-                fprintf(stderr, "LOG [%d]: FAILED to SENT MULTICAST msg\n", send_info.local_pid);
+                fprintf(stderr, "LOG [%d]: FAILED to SENT MULTICAST msg\n", from);
                 return -1;
             }
         }
     }
+
     return 0;
 }
 
 int send(void *self, local_id dst, const Message *msg) {
-    struct send_info send_info = *(struct send_info*) self;
-    int fd = send_info.pipe_table.data[send_info.local_pid][dst].write_fds;
-    int fd_with_parent = send_info.pipe_table.with_parent[send_info.local_pid].write_fds;
+    struct pipe_table pipe_table = (*(struct process_info *) self).pipe_table;
+    local_id from = (*(struct process_info *) self).id;
 
-    if (write(fd, msg, sizeof(*msg)) == -1) {
-        fprintf(stderr, "LOG [%d]: FAILED to SENT msg = %hd to %hhd BY %d file\n", send_info.local_pid, msg->s_header.s_type, dst, fd);
+    int fd = pipe_table.data[from][dst].write_fds;
+
+    if (write(fd, msg->s_payload, msg->s_header.s_payload_len) == -1) {
+        fprintf(stderr, "LOG [%d]: FAILED to SENT msg = %hd to %hhd BY %d file\n", from,
+                msg->s_header.s_type, dst, fd);
         return -1;
-    } else{
-        printf("LOG [%d]: SUCCESSFULLY SENT msg = %hd to %hhd BY %d file\n", send_info.local_pid, msg->s_header.s_type, dst, fd);
-    }
-
-
-    if (write(fd_with_parent, msg, sizeof(*msg)) == -1){
-        fprintf(stderr, "LOG [%d]: FAILED to SENT msg = %hd to PARENT BY %d file\n", send_info.local_pid, msg->s_header.s_type, fd_with_parent);
-        return -1;
-    } else{
-        printf("LOG [%d]: SUCCESSFULLY SENT msg = %hd to PARENT BY %d file\n", send_info.local_pid, msg->s_header.s_type, fd_with_parent);
+    } else {
+        printf("LOG [%d]: SUCCESSFULLY SENT msg = %hd to %hhd BY %d file\n", from, msg->s_header.s_type,
+               dst, fd);
         return 0;
     }
 }
 
-int receive_any(void * self, Message * msg){
-    struct send_info send_info = *(struct send_info*) self;
+int receive_any(void *self, Message *msg) {
+    struct pipe_table pipe_table = (*(struct process_info *) self).pipe_table;
+    local_id to = (*(struct process_info *) self).id;
 
-    for (local_id i = 0; i < send_info.pipe_table.size; i++) {
-        if (i != send_info.local_pid) {
+    for (local_id i = 1; i < pipe_table.size; i++) {
+        if (i != to) {
             if (receive(self, i, msg) == -1) {
-                fprintf(stderr, "LOG [%d]: FAILED to RECEIVE MULTICAST msg = %hd\n", send_info.local_pid, msg->s_header.s_type);
+                fprintf(stderr, "LOG [%d]: FAILED to RECEIVE MULTICAST msg = %hd\n", to,
+                        msg->s_header.s_type);
                 return -1;
             }
         }
@@ -146,39 +154,46 @@ int receive_any(void * self, Message * msg){
 }
 
 
-int receive(void * self, local_id from, Message * msg){
-    struct send_info send_info = *(struct send_info*) self;
-    int fd = send_info.pipe_table.data[from][send_info.local_pid].read_fds;
+int receive(void *self, local_id from, Message *msg) {
+    struct pipe_table pipe_table = (*(struct process_info *) self).pipe_table;
+    local_id to = (*(struct process_info *) self).id;
 
-    if (read(fd, msg, sizeof(*msg)) == -1) {
-        fprintf(stderr, "LOG [%d]: FAILED to RECEIVE msg = %hd from %hhd BY %d file\n", send_info.local_pid, msg->s_header.s_type, from, fd);
+    int fd = pipe_table.data[from][to].read_fds;
+
+    if (read(fd, msg->s_payload, msg->s_header.s_payload_len) == -1) {
+        fprintf(stderr, "LOG [%d]: FAILED to RECEIVE msg = %hd from %hhd BY %d file\n", to,
+                msg->s_header.s_type, from, fd);
         return -1;
-    } else{
-        printf("LOG [%d]: SUCCESSFULLY RECEIVED msg = %hd  from %hhd BY %d file\n", send_info.local_pid, msg->s_header.s_type, from, fd);
+    } else {
+        printf("LOG [%d]: SUCCESSFULLY RECEIVED msg = %hd  from %hhd BY %d file\n", to,
+               msg->s_header.s_type, from, fd);
         return 0;
     }
 }
+
 int create_pipes(struct pipe_table *pipe_table) {
     for (size_t i = 0; i < pipe_table->size; i++) {
         for (size_t j = 0; j < pipe_table->size; j++) {
+
             if (i == j) {
-                pipe_table->data[i][j] = (union custom_pipe) {-1, -1};
-            } else if (pipe(pipe_table->data[i][j].pipefds) == -1) {
+                continue;
+            }
+
+            int pipefds[2] = {-1, -1};
+            if (pipe(pipefds) == -1) {
                 return -1;
             }
+
+            pipe_table->data[i][j].read_fds = pipefds[0];
+            pipe_table->data[i][j].write_fds = pipefds[1];
+
         }
     }
 
-    for (size_t i = 0; i < pipe_table->size; i++){
-        if (pipe(pipe_table->with_parent[i].pipefds) == -1) {
-            return -1;
-        }
-
-    }
     return 0;
 }
 
-void start_work(){
+void start_work() {
     // DO NOTHING
 }
 
@@ -186,14 +201,17 @@ void start_subprocess(local_id local_pid, int parent_pid, struct pipe_table pipe
     fprintf(log_files.event_log, log_started_fmt, local_pid, getpid(), parent_pid);
     fprintf(stdin, log_started_fmt, local_pid, getpid(), parent_pid);
 
-    const Message start_message = {.s_header.s_type = STARTED};
-
-    send_multicast((void *) &(struct send_info){local_pid, pipe_table}, &start_message);
-    receive_any((void *) &(struct send_info){local_pid, pipe_table}, &start_message);
+    Message start_message = create_start_message();
 
 
-    fprintf(log_files.event_log, log_received_all_started_fmt, local_pid);
-    fprintf(stdin, log_received_all_started_fmt, local_pid);
+    send_multicast((void *) &(struct process_info) {local_pid, pipe_table}, &start_message);
+
+    if (pipe_table.size > 2) {
+        receive_any((void *) &(struct process_info) {local_pid, pipe_table}, &start_message);
+        fprintf(log_files.event_log, log_received_all_started_fmt, local_pid);
+        fprintf(stdin, log_received_all_started_fmt, local_pid);
+    }
+
 
     start_work();
 
@@ -201,43 +219,45 @@ void start_subprocess(local_id local_pid, int parent_pid, struct pipe_table pipe
     fprintf(stdin, log_done_fmt, local_pid);
 
 
-    const Message done_message = {.s_header.s_type = DONE};
-    send_multicast((void *) &(struct send_info){local_pid, pipe_table}, &done_message);
-    receive_any((void *) &(struct send_info){local_pid, pipe_table}, &done_message);
+    Message done_message = create_done_message();
+    send_multicast((void *) &(struct process_info) {local_pid, pipe_table}, &done_message);
 
+    if (pipe_table.size > 2) {
+        receive_any((void *) &(struct process_info) {local_pid, pipe_table}, &done_message);
+        fprintf(log_files.event_log, log_received_all_done_fmt, local_pid);
+        fprintf(stdin, log_received_all_done_fmt, local_pid);
+    }
 
-    fprintf(log_files.event_log, log_received_all_done_fmt, local_pid);
-    fprintf(stdin, log_received_all_done_fmt, local_pid);
-
-    sleep(5);
 
 }
 
 void start_parent_process(local_id local_pid, struct log_files log_files, struct pipe_table pipe_table) {
     printf("LOG: PARENT PROCESS with local_pid = %d started\n", local_pid);
 
+    Message start_message = create_start_message();
+    receive_any((void *) &(struct process_info) {local_pid, pipe_table}, &start_message);
 
-
-
+    Message done_message = create_done_message();
+    receive_any((void *) &(struct process_info) {local_pid, pipe_table}, &done_message);
     if (close_log_files(log_files) == -1) {
         fprintf(stderr, "LOG: FAILED to CLOSE log files");
         exit(EXIT_FAILURE);
-    };
+    }
+    destroy_pipe_table(pipe_table);
 }
 
 int create_subprocesses(struct pipe_table pipe_table, struct log_files log_files) {
-    local_id local_pid_counter = 0;
+
     int parent_pid = getpid();
-    for (local_id i = 0; i < pipe_table.size; i++) {
+    for (local_id i = 1; i < pipe_table.size; i++) {
         int fork_res = fork();
         if (fork_res == 0) {
-            start_subprocess(local_pid_counter, parent_pid, pipe_table, log_files);
+            start_subprocess(i, parent_pid, pipe_table, log_files);
             break;
         } else if (fork_res > 0) {
             // TODO probably that causes problems
-            local_pid_counter++;
             if (i == pipe_table.size - 1) {
-                start_parent_process(0, log_files);
+                start_parent_process(0, log_files, pipe_table);
             }
         } else {
             return -1;
@@ -247,7 +267,7 @@ int create_subprocesses(struct pipe_table pipe_table, struct log_files log_files
 }
 
 int main(int argc, char **argv) {
-    local_id subprocess_count = atoi(argv[2]);
+    local_id subprocess_count = (local_id) strtol(argv[2], NULL, 10);
     if (subprocess_count == 0) {
         printf("LOG: process count is not specified manually\n");
         printf("LOG: default process count is 2\n");
@@ -259,7 +279,7 @@ int main(int argc, char **argv) {
         perror("LOG: FAILED to CREATE LOG files");
     }
 
-    struct pipe_table pipe_table = create_pipe_table(subprocess_count);
+    struct pipe_table pipe_table = create_pipe_table((local_id) (subprocess_count + 1));
 
     if (create_pipes(&pipe_table) != 0) {
         perror("LOG: CREATION of a PIPE TABLE was UNSUCCESSFUL\n");
@@ -273,7 +293,5 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    destroy_pipe_table(pipe_table);
-    // TODO add closing log files
     return 0;
 }

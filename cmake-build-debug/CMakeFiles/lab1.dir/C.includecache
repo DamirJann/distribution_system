@@ -19,6 +19,8 @@ unistd.h
 -
 stdlib.h
 -
+time.h
+-
 pa1.h
 /home/damire/space/distibution_system/lab1/pa1.h
 ipc.h
