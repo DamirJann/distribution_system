@@ -76,6 +76,12 @@
 				</MakeCommands>
 			</Target>
 		</Build>
+		<Unit filename="/home/damire/space/distibution_system/lab1/auxiliary.c">
+			<Option target="lab1"/>
+		</Unit>
+		<Unit filename="/home/damire/space/distibution_system/lab1/auxiliary.h">
+			<Option target="lab1"/>
+		</Unit>
 		<Unit filename="/home/damire/space/distibution_system/lab1/main.c">
 			<Option target="lab1"/>
 		</Unit>

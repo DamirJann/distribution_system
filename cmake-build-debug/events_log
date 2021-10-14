@@ -1,8 +1,8 @@
-Process 1 (pid 21966, parent 21962) has STARTED
+Process 1 (pid 17105, parent 17104) has STARTED
 Process 1 received all STARTED messages
 Process 1 has DONE its work
 Process 1 received all DONE messages
-Process 2 (pid 21967, parent 21962) has STARTED
+Process 2 (pid 17106, parent 17104) has STARTED
 Process 2 received all STARTED messages
 Process 2 has DONE its work
 Process 2 received all DONE messages

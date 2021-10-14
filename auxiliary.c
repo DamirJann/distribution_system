@@ -89,13 +89,13 @@ void close_extra_pipe_by_subprocess(local_id pid, struct pipe_table *pipe_table)
                 pipe_table->data[i][j].read_fds = -1;
                 pipe_table->data[i][j].write_fds = -1;
             }
-//            else if (i == pid) {
-//                close(pipe_table->data[i][j].read_fds);
-//                pipe_table->data[i][j].read_fds = -1;
-//            } else if (j == pid) {
-//                close(pipe_table->data[i][j].write_fds);
-//                pipe_table->data[i][j].write_fds = -1;
-//            }
+            else if (i == pid) {
+                close(pipe_table->data[i][j].read_fds);
+                pipe_table->data[i][j].read_fds = -1;
+            } else if (j == pid) {
+                close(pipe_table->data[i][j].write_fds);
+                pipe_table->data[i][j].write_fds = -1;
+            }
         }
     }
 }

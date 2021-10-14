@@ -6,6 +6,22 @@
 
 #IncludeRegexTransform: 
 
+/home/damire/space/distibution_system/lab1/auxiliary.c
+time.h
+-
+stdio.h
+-
+unistd.h
+-
+stdlib.h
+-
+ipc.h
+/home/damire/space/distibution_system/lab1/ipc.h
+auxiliary.h
+/home/damire/space/distibution_system/lab1/auxiliary.h
+
+/home/damire/space/distibution_system/lab1/auxiliary.h
+
 /home/damire/space/distibution_system/lab1/ipc.h
 stddef.h
 -
@@ -19,12 +35,14 @@ unistd.h
 -
 stdlib.h
 -
-time.h
+wait.h
 -
 pa1.h
 /home/damire/space/distibution_system/lab1/pa1.h
 ipc.h
 /home/damire/space/distibution_system/lab1/ipc.h
+auxiliary.h
+/home/damire/space/distibution_system/lab1/auxiliary.h
 
 /home/damire/space/distibution_system/lab1/pa1.h
 

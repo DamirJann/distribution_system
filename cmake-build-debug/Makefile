@@ -129,6 +129,30 @@ lab1/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/lab1.dir/build.make CMakeFiles/lab1.dir/build
 .PHONY : lab1/fast
 
+auxiliary.o: auxiliary.c.o
+.PHONY : auxiliary.o
+
+# target to build an object file
+auxiliary.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lab1.dir/build.make CMakeFiles/lab1.dir/auxiliary.c.o
+.PHONY : auxiliary.c.o
+
+auxiliary.i: auxiliary.c.i
+.PHONY : auxiliary.i
+
+# target to preprocess a source file
+auxiliary.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lab1.dir/build.make CMakeFiles/lab1.dir/auxiliary.c.i
+.PHONY : auxiliary.c.i
+
+auxiliary.s: auxiliary.c.s
+.PHONY : auxiliary.s
+
+# target to generate assembly for a file
+auxiliary.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/lab1.dir/build.make CMakeFiles/lab1.dir/auxiliary.c.s
+.PHONY : auxiliary.c.s
+
 main.o: main.c.o
 .PHONY : main.o
 
@@ -162,6 +186,9 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... lab1"
+	@echo "... auxiliary.o"
+	@echo "... auxiliary.i"
+	@echo "... auxiliary.s"
 	@echo "... main.o"
 	@echo "... main.i"
 	@echo "... main.s"
