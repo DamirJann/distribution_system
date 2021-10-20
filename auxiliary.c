@@ -66,8 +66,7 @@ Message create_start_message() {
     return (Message) {
             .s_header.s_type = STARTED,
             .s_header.s_local_time = (int16_t) time(NULL),
-            .s_header.s_magic = MESSAGE_MAGIC,
-            .s_header.s_payload_len = 0,
+            .s_header.s_magic = MESSAGE_MAGIC
     };
 }
 
@@ -75,8 +74,7 @@ Message create_done_message() {
     return (Message) {
             .s_header.s_type = DONE,
             .s_header.s_local_time = (int16_t) time(NULL),
-            .s_header.s_magic = MESSAGE_MAGIC,
-            .s_header.s_payload_len = 0,
+            .s_header.s_magic = MESSAGE_MAGIC
     };
 }
 

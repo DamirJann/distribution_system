@@ -8,9 +8,8 @@
 
 
 int send_multicast(void *self, const Message *msg) {
-    struct pipe_table pipe_table = (*(struct process_info *) self).pipe_table;
-    local_id from = (*(struct process_info *) self).id;
-
+    struct pipe_table pipe_table = ((struct process_info *) self)->pipe_table;
+    local_id from = ((struct process_info *) self)->id;
     for (local_id i = 0; i < pipe_table.size; i++) {
         if (i == from) {
             continue;
@@ -27,17 +26,18 @@ int send_multicast(void *self, const Message *msg) {
 }
 
 int send(void *self, local_id dst, const Message *msg) {
-    struct pipe_table pipe_table = (*(struct process_info *) self).pipe_table;
-    local_id from = (*(struct process_info *) self).id;
+    struct pipe_table pipe_table = ((struct process_info *) self)->pipe_table;
+    local_id from = ((struct process_info *) self)->id;
+    printf("%s - %d\n", msg->s_payload, msg->s_header.s_payload_len);
 
     int fd = pipe_table.data[from][dst].write_fds;
 
-    if (write(fd, msg->s_payload, msg->s_header.s_payload_len) == -1) {
-        fprintf(stderr, "LOG [%d]: FAILED to SENT msg = %hd to %hhd BY %d file\n", from,
-                msg->s_header.s_type, dst, fd);
+    if (write(fd, msg, msg->s_header.s_payload_len + sizeof(MessageHeader)) == -1) {
+        fprintf(stderr, "LOG [%d]: FAILED to SENT msg = %s to %hhd BY %d file\n", from,
+                msg->s_payload, dst, fd);
         return -1;
     } else {
-        printf("LOG [%d]: SUCCESSFULLY SENT msg = %hd to %hhd BY %d file\n", from, msg->s_header.s_type,
+        printf("LOG [%d]: SUCCESSFULLY SENT msg = %s to %hhd BY %d file\n", from, msg->s_payload,
                dst, fd);
         return 0;
     }
@@ -51,8 +51,8 @@ int receive_from_all(struct process_info process_info, Message *msg) {
         }
 
         if (receive((void *) &process_info, i, msg) == -1) {
-            fprintf(stderr, "LOG [%d]: FAILED to RECEIVE MULTICAST msg = %hd\n", process_info.id,
-                    msg->s_header.s_type);
+            fprintf(stderr, "LOG [%d]: FAILED to RECEIVE MULTICAST msg = %s\n", process_info.id,
+                    msg->s_payload);
             return -1;
         }
     }
@@ -62,18 +62,20 @@ int receive_from_all(struct process_info process_info, Message *msg) {
 int receive(void *self, local_id from, Message *msg) {
     struct pipe_table pipe_table = (*(struct process_info *) self).pipe_table;
     local_id to = (*(struct process_info *) self).id;
-
     int fd = pipe_table.data[from][to].read_fds;
 
-    if (read(fd, msg->s_payload, msg->s_header.s_payload_len) == -1) {
-        fprintf(stderr, "LOG [%d]: FAILED to RECEIVE msg = %hd from %hhd BY %d file\n", to,
-                msg->s_header.s_type, from, fd);
+    if (read(fd, &msg->s_header, sizeof(MessageHeader)) == -1) {
+        fprintf(stderr, "LOG [%d]: FAILED to RECEIVE HEADER from %hhd BY %d file\n", to, from, fd);
         return -1;
-    } else {
-        printf("LOG [%d]: SUCCESSFULLY RECEIVED msg = %hd  from %hhd BY %d file\n", to,
-               msg->s_header.s_type, from, fd);
-        return 0;
     }
+
+    if (read(fd, msg->s_payload, msg->s_header.s_payload_len) == -1) {
+        fprintf(stderr, "LOG [%d]: FAILED to RECEIVE PAYLOAD from %hhd BY %d file\n", to, from, fd);
+        return -1;
+    }
+
+    printf("LOG [%d]: SUCCESSFULLY RECEIVED msg = %s  from %hhd BY %d file\n", to, msg->s_payload, from, fd);
+    return 0;
 }
 
 int create_pipes(struct pipe_table *pipe_table) {
@@ -112,6 +114,8 @@ void start_subprocess(local_id local_pid, int parent_pid, struct pipe_table pipe
     fprintf(stdin, log_started_fmt, local_pid, getpid(), parent_pid);
 
     Message start_message = create_start_message();
+    start_message.s_header.s_payload_len = snprintf(start_message.s_payload, MAX_PAYLOAD_LEN, log_started_fmt,
+                                                    local_pid, getpid(), parent_pid);
 
     send_multicast((void *) &(struct process_info) {local_pid, pipe_table}, &start_message);
     receive_from_all((struct process_info) {local_pid, pipe_table}, &start_message);
@@ -126,6 +130,7 @@ void start_subprocess(local_id local_pid, int parent_pid, struct pipe_table pipe
 
 
     Message done_message = create_done_message();
+    done_message.s_header.s_payload_len = sprintf(done_message.s_payload, log_done_fmt, local_pid);
 
     send_multicast((void *) &(struct process_info) {local_pid, pipe_table}, &done_message);
     receive_from_all((struct process_info) {local_pid, pipe_table}, &done_message);
@@ -177,7 +182,6 @@ int create_subprocesses(struct pipe_table pipe_table, struct log_files log_files
             start_subprocess(i, parent_pid, pipe_table, log_files);
             break;
         } else if (fork_res > 0) {
-            // TODO probably that causes problems
             if (i == pipe_table.size - 1) {
                 start_parent_process(PARENT_ID, log_files, pipe_table);
             }
@@ -194,7 +198,7 @@ int main(int argc, char **argv) {
         printf("LOG: process count is not specified manually\n");
         printf("LOG: default process count is 2\n");
         subprocess_count = 2;
-    }  else{
+    } else {
         printf("LOG: process count is %hhd\n", subprocess_count);
     }
 
