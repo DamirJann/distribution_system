@@ -105,9 +105,11 @@ Message create_done_message(){
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 int send_multicast(void *self, const Message *msg) {
+    // TODO
+    // change to -> 
     struct pipe_table pipe_table = (*(struct process_info *) self).pipe_table;
     local_id from = (*(struct process_info *) self).id;
-
+    
     for (local_id i = 0; i < pipe_table.size; i++) {
         if (i != from) {
             if (send(self, i, msg) == -1) {
