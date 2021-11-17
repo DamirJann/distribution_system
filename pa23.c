@@ -2,8 +2,9 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <wait.h>
-#include "pa1.h"
+#include "pa2345.h"
 #include "ipc.h"
+#include "banking.h"
 #include "auxiliary.h"
 
 
@@ -192,15 +193,18 @@ int create_subprocesses(struct pipe_table pipe_table, struct log_files log_files
     return 0;
 }
 
+void transfer(void * parent_data, local_id src, local_id dst,
+              balance_t amount)
+{
+    // TODO student, please implement me
+}
+
+
 int main(int argc, char **argv) {
     local_id subprocess_count = (local_id) strtol(argv[2], NULL, 10);
-    if (subprocess_count == 0) {
-        printf("LOG: process count is not specified manually\n");
-        printf("LOG: default process count is 2\n");
-        subprocess_count = 2;
-    } else {
-        printf("LOG: process count is %hhd\n", subprocess_count);
-    }
+
+    printf("LOG: process count is %hhd\n", subprocess_count);
+
 
     struct log_files log_files;
     if (open_log_files(&log_files) != 0) {
