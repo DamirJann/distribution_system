@@ -1,8 +1,8 @@
 #!/bin/bash
 clang -std=c99 -Wall -pedantic *.c
-mkdir pa1
-cp ./*.c ./pa1
-cp ./*.h ./pa1
-tar -czvf pa1.tar.gz pa1
-rm -rf ./pa1
+mkdir pa2
+cp ./*.c ./pa2
+cp ./*.h ./pa2
+tar -czvf pa2.tar.gz pa2
+rm -rf ./pa2
 rm a.out

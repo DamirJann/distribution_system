@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include "ipc.h"
 #include "auxiliary.h"
+#include "banking.h"
 
 
 const char *EVENT_LOG_FILE_NAME = "events_log";
@@ -62,22 +63,6 @@ int close_log_files(struct log_files log_files) {
     return 0;
 }
 
-Message create_start_message() {
-    return (Message) {
-            .s_header.s_type = STARTED,
-            .s_header.s_local_time = (int16_t) time(NULL),
-            .s_header.s_magic = MESSAGE_MAGIC
-    };
-}
-
-Message create_done_message() {
-    return (Message) {
-            .s_header.s_type = DONE,
-            .s_header.s_local_time = (int16_t) time(NULL),
-            .s_header.s_magic = MESSAGE_MAGIC
-    };
-}
-
 void close_extra_pipe_by_subprocess(local_id pid, struct pipe_table *pipe_table) {
     for (local_id i = 0; i < pipe_table->size; i++) {
         for (local_id j = 0; j < pipe_table->size; j++) {
@@ -96,4 +81,16 @@ void close_extra_pipe_by_subprocess(local_id pid, struct pipe_table *pipe_table)
             }
         }
     }
+}
+
+balance_t * create_balance_t_array(local_id size){
+    balance_t * arr = malloc(sizeof(balance_t) * size);
+    for (local_id i = 0; i < size; i++){
+        arr[i] = 0;
+    }
+    return arr;
+}
+
+void destroy_balance_t_array(balance_t* arr){
+    free(arr);
 }

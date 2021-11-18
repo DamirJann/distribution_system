@@ -2,6 +2,8 @@
 // Created by damire on 14.10.2021.
 //
 
+#include "banking.h"
+
 #ifndef LAB1_AUXILIARY_H
 #define LAB1_AUXILIARY_H
 
@@ -22,6 +24,12 @@ struct pipe_table {
     struct custom_pipe **data;
 };
 
+struct transfer_info{
+    struct pipe_table pipe_table;
+    local_id recipient;
+    balance_t amount;
+};
+
 struct process_info {
     local_id id;
     struct pipe_table pipe_table;
@@ -39,6 +47,6 @@ int open_log_files(struct log_files*);
 
 int close_log_files(struct log_files);
 
-Message create_start_message();
+balance_t * create_balance_t_array(local_id);
 
-Message create_done_message();
+void destroy_balance_t_array(balance_t*);

@@ -31,7 +31,7 @@ typedef enum {
     ACK,             ///< empty message
     STOP,            ///< empty message
     TRANSFER,        ///< message with TransferOrder
-    BALANCE_HISTORY, ///< message with BalanceHistory
+    STORY, ///< message with BalanceHistory
     CS_REQUEST,      ///< empty message
     CS_REPLY,        ///< empty message
     CS_RELEASE       ///< empty message
