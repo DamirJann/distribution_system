@@ -19,12 +19,10 @@ int send_multicast(void *self, const Message *msg) {
         }
 
         if (send(self, i, msg) == -1) {
-            fprintf(stderr, "LOG [%d]: FAILED to SENT MULTICAST msg\n", from);
             return -1;
         }
 
     }
-
     return 0;
 }
 
@@ -38,8 +36,7 @@ int send(void *self, local_id dst, const Message *msg) {
                 msg->s_payload, dst);
         return -1;
     } else {
-        printf("LOG [%d]: SUCCESSFULLY SENT msg('%s') to %hhd process\n", from, msg->s_payload,
-               dst, fd);
+//        printf("LOG [%d]: SUCCESSFULLY SENT msg('%s') to %hhd process\n", from, msg->s_payload, dst);
         return 0;
     }
 }
@@ -58,7 +55,7 @@ int receive(void *self, local_id from, Message *msg) {
         return -1;
     }
 
-    printf("LOG [%d]: SUCCESSFULLY RECEIVED msg('%s') from %hhd process\n", to, msg->s_payload, from);
+//    printf("LOG [%d]: SUCCESSFULLY RECEIVED msg('%s') from %hhd process\n", to, msg->s_payload, from);
     return 0;
 }
 
@@ -114,19 +111,21 @@ TransferOrder parse_transfer_order(const char *msg) {
     transfer_order.s_dst = (local_id) strtol(dst, NULL, 10);
 
     char *amount = strtok(s, "\0");
-    transfer_order.s_amount = (balance_t) strtol(dst, NULL, 10);
-
+    transfer_order.s_amount = (balance_t) strtol(amount, NULL, 10);
+//    printf("parsed (%s) %d, %d, %d\n",msg, *src, *dst, *amount);
     return transfer_order;
 }
 
 void handle_transfer_message(const local_id local_pid, struct pipe_table pipe_table, struct log_files log_files,
-                             balance_t* init_balance, const Message received_msg) {
+                             balance_t *init_balance, const Message received_msg) {
 
     const TransferOrder transfer_order = parse_transfer_order(received_msg.s_payload);
 
     if (transfer_order.s_src == local_pid) {
         *init_balance -= transfer_order.s_amount;
-        while (send((void *) &(struct process_info) {local_pid, pipe_table}, transfer_order.s_dst, &received_msg) != 0);
+        send((void *) &(struct process_info) {local_pid, pipe_table}, transfer_order.s_dst, &received_msg);
+        fprintf(log_files.event_log, log_transfer_out_fmt, get_physical_time(), local_pid, transfer_order.s_amount, transfer_order.s_dst );
+        fprintf(stdout, log_transfer_out_fmt, get_physical_time(), local_pid, transfer_order.s_amount, transfer_order.s_dst );
     } else {
         *init_balance += transfer_order.s_amount;;
         Message ack_msg = (Message) {
@@ -136,9 +135,10 @@ void handle_transfer_message(const local_id local_pid, struct pipe_table pipe_ta
                 // write message to payload and its size to payload_len
                 .s_header.s_payload_len = 0
         };
-        while (send((void *) &(struct process_info) {local_pid, pipe_table}, PARENT_ID, &ack_msg) != 0);
+        send((void *) &(struct process_info) {local_pid, pipe_table}, PARENT_ID, &ack_msg);
+        fprintf(log_files.event_log, log_transfer_in_fmt, get_physical_time(), local_pid, transfer_order.s_amount, transfer_order.s_src);
+        fprintf(stdout, log_transfer_in_fmt, get_physical_time(), local_pid, transfer_order.s_amount, transfer_order.s_src);
     }
-
 
 
 }
@@ -167,7 +167,8 @@ void start_subprocess_work(local_id local_pid, struct pipe_table pipe_table, str
 
         switch (msg.s_header.s_type) {
             case DONE: {
-                fprintf(stdin, "LOG[%d]: SUCCESSFULLY received DONE message during WORK step", local_pid);
+                fprintf(log_files.event_log, log_done_fmt, get_physical_time(), local_pid, current_balance);
+                fprintf(stdout, log_done_fmt, get_physical_time(), local_pid, current_balance);
                 return;
             }
             case TRANSFER: {
@@ -175,7 +176,7 @@ void start_subprocess_work(local_id local_pid, struct pipe_table pipe_table, str
                 break;
             }
             default: {
-                fprintf(stderr, "LOG[%d]: got message with UNKNOWN type during WORK step", local_pid);
+                fprintf(stdout, "LOG[%d]: got message with UNKNOWN type during WORK step\n", local_pid);
                 break;
             }
         }
@@ -195,7 +196,7 @@ void start_c_subprocess(local_id local_pid, int parent_pid, struct pipe_table pi
     print_pipes_table(local_pid, log_files.pipe_log, pipe_table);
 
     fprintf(log_files.event_log, log_started_fmt, get_physical_time(), local_pid, getpid(), parent_pid, init_balance);
-    fprintf(stdin, log_started_fmt, get_physical_time(), local_pid, getpid(), parent_pid, init_balance);
+    fprintf(stdout, log_started_fmt, get_physical_time(), local_pid, getpid(), parent_pid, init_balance);
 
     Message start_message = (Message) {
             .s_header.s_type = STARTED,
@@ -216,16 +217,16 @@ void start_c_subprocess(local_id local_pid, int parent_pid, struct pipe_table pi
 void wait_subprocesses(local_id process_count) {
     for (local_id i = 0; i < process_count; i++) {
         if (wait(NULL) == -1) {
-            fprintf(stderr, "LOG: FAILED to WAIT all subprocesses");
+            fprintf(stderr, "LOG: FAILED to WAIT all subprocesses\n");
             exit(EXIT_FAILURE);
         }
     }
 
     if (wait(NULL) != -1) {
-        fprintf(stderr, "LOG: NOT all subprocesses were waited");
+        fprintf(stderr, "LOG: NOT all subprocesses were waited\n");
         exit(EXIT_FAILURE);
     }
-    fprintf(stdin, "LOG: SUCCESSFULLY WAITED all subprocesses");
+    printf("LOG: SUCCESSFULLY WAITED all subprocesses\n");
 }
 
 void receive_started_message_from_all(local_id to, struct pipe_table pipe_table) {
@@ -239,22 +240,37 @@ void receive_started_message_from_all(local_id to, struct pipe_table pipe_table)
     }
 }
 
+Message create_done_message(){
+    return (Message) {
+            .s_header.s_type = DONE,
+            .s_header.s_local_time = get_physical_time(),
+            .s_header.s_magic = MESSAGE_MAGIC,
+            // write message to payload and its size to payload_len
+            .s_header.s_payload_len = 0
+    };
+}
 
 void start_k_process(local_id local_pid, struct log_files log_files, struct pipe_table pipe_table) {
-    printf("LOG: PARENT PROCESS with local_pid = %d started\n", local_pid);
-    print_pipes_table(local_pid, log_files.pipe_log, pipe_table);
     close_extra_pipe_by_subprocess(local_pid, &pipe_table);
 
 
     receive_started_message_from_all(PARENT_ID, pipe_table);
-    printf("LOG[0]: SUCCESSFULLY RECEIVED all started messages\n");
-
+    fprintf(log_files.event_log, log_received_all_started_fmt, get_physical_time(), local_pid);
+    fprintf(stdout, log_received_all_started_fmt, get_physical_time(), local_pid);
 
     bank_robbery((void *) &pipe_table, pipe_table.size - 1);
 
-    while (1);
+
+    Message message = create_done_message();
+    if (send_multicast((void *) &(struct process_info) {local_pid, pipe_table}, &message) == -1){
+        fprintf(stderr, "LOG[%d]: FAILED to SEND multicast DONE message");
+    } else {
+        fprintf(log_files.event_log, log_received_all_done_fmt, get_physical_time(), local_pid);
+        fprintf(stdout, log_received_all_done_fmt, get_physical_time(), local_pid);
+    }
+
     if (close_log_files(log_files) == -1) {
-        fprintf(stderr, "LOG: FAILED to CLOSE log files");
+        fprintf(stderr, "LOG: FAILED to CLOSE log files\n");
         exit(EXIT_FAILURE);
     }
     destroy_pipe_table(pipe_table);
@@ -296,7 +312,6 @@ void transfer(void *parent_data, local_id src, local_id dst,
 
 
 int main(int argc, char **argv) {
-
     if (getopt(argc, argv, "p") == -1) {
         perror("LOG: FAILED to PARSE p parameter");
         exit(EXIT_FAILURE);
@@ -322,8 +337,6 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    print_pipes_table(PARENT_ID, stdout, pipe_table);
-
     if (create_subprocesses(pipe_table, log_files, init_balance) != 0) {
         perror("LOG: CREATION of a CHILD PROCESS was UNSUCCESSFUL\n");
         exit(EXIT_FAILURE);
@@ -332,4 +345,5 @@ int main(int argc, char **argv) {
     destroy_balance_t_array(init_balance);
 
     return 0;
+
 }
