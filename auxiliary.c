@@ -8,10 +8,34 @@
 #include "ipc.h"
 #include "auxiliary.h"
 #include "banking.h"
+#include "common.h"
 
+void log(struct log_files log_files, char* log_message, Log_level log_level) {
+    switch (log_level) {
+        case DEBUG: {
+            fprintf(log_files.event_log, "\n    * %s\n\n", log_message);
+            fprintf(stdout, "\n    * %s\n\n", log_message);
+            break;
+        }
+        case INFO: {
+            fprintf(log_files.event_log, "%s\n", log_message);
+            fprintf(stdout, "%s", log_message);
+            break;
+        }
+        default:
+            break;
+    }
+}
 
-const char *EVENT_LOG_FILE_NAME = "events_log";
-const char *PIPE_LOG_FILE_NAME = "pipes_log";
+Message create_default_message(MessageType type){
+    return (Message) {
+            .s_header.s_type = type,
+            .s_header.s_local_time = get_physical_time(),
+            .s_header.s_magic = MESSAGE_MAGIC,
+            // write message to payload and its size to payload_len
+            .s_header.s_payload_len = 0
+    };
+}
 
 struct pipe_table create_pipe_table(local_id process_count) {
     struct pipe_table pipe_table;
@@ -43,8 +67,8 @@ void print_pipes_table(local_id pid, FILE *file, struct pipe_table pipe_table) {
 }
 
 int open_log_files(struct log_files *log_files) {
-    log_files->event_log = fopen(EVENT_LOG_FILE_NAME, "w");
-    log_files->pipe_log = fopen(PIPE_LOG_FILE_NAME, "w");
+    log_files->event_log = fopen(events_log, "w");
+    log_files->pipe_log = fopen(pipes_log, "w");
 
     if (log_files->event_log == NULL || log_files->pipe_log == NULL) {
         return -1;
