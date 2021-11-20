@@ -9,6 +9,8 @@
 #include<fcntl.h>
 #include<getopt.h>
 #include <string.h>
+#include <assert.h>
+#include <expat.h>
 
 int send_multicast(void *self, const Message *msg) {
     struct pipe_table pipe_table = ((struct process_info *) self)->pipe_table;
@@ -102,17 +104,15 @@ TransferOrder parse_transfer_order(const char *msg) {
     char *s = malloc(sizeof(char) * MAX_PAYLOAD_LEN);
     strncpy(s, msg, MAX_PAYLOAD_LEN);
 
-    strtok(s, "src:");
     char *src = strtok(s, ",");
     transfer_order.s_src = (local_id) strtol(src, NULL, 10);
 
-    strtok(s, "dst:");
-    char *dst = strtok(s, ",");
+
+    char *dst = strtok(NULL, ",");
     transfer_order.s_dst = (local_id) strtol(dst, NULL, 10);
 
-    char *amount = strtok(s, "\0");
+    char *amount = strtok(NULL, ",");
     transfer_order.s_amount = (balance_t) strtol(amount, NULL, 10);
-//    printf("parsed (%s) %d, %d, %d\n",msg, *src, *dst, *amount);
     return transfer_order;
 }
 
@@ -187,6 +187,7 @@ void start_subprocess_work(local_id local_pid, struct pipe_table pipe_table, str
                 .s_balance_pending_in = 0,
         });
     }
+
 }
 
 
@@ -305,13 +306,15 @@ void transfer(void *parent_data, local_id src, local_id dst,
             .s_header.s_magic = MESSAGE_MAGIC,
             // write message to payload and its size to payload_len
             .s_header.s_payload_len = snprintf(transfer_msg.s_payload, MAX_PAYLOAD_LEN,
-                                               "src: %d, dst: %d, amount: %d", src, dst, amount)
+                                               "%d, %d, %d,", src, dst, amount)
     };
     send((void *) &process_info, src, &transfer_msg);
 }
 
 
+
 int main(int argc, char **argv) {
+
     if (getopt(argc, argv, "p") == -1) {
         perror("LOG: FAILED to PARSE p parameter");
         exit(EXIT_FAILURE);
