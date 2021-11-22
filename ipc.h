@@ -26,12 +26,12 @@ enum {
 };
 
 typedef enum {
-    STARTED = 0,     ///< message with string (doesn't include trailing '\0')
+    STARTED,     ///< message with string (doesn't include trailing '\0')
     DONE,            ///< message with string (doesn't include trailing '\0')
     ACK,             ///< empty message
     STOP,            ///< empty message
     TRANSFER,        ///< message with TransferOrder
-    STORY, ///< message with BalanceHistory
+    BALANCE_HISTORY, ///< message with BalanceHistory
     CS_REQUEST,      ///< empty message
     CS_REPLY,        ///< empty message
     CS_RELEASE       ///< empty message
@@ -42,8 +42,8 @@ typedef struct {
     uint16_t     s_payload_len;  ///< length of payload
     int16_t      s_type;         ///< type of the message
     timestamp_t  s_local_time;   ///< set by sender, depends on particular PA:
-                                 ///< physical time in PA2 or Lamport's scalar
-                                 ///< time in PA3
+    ///< physical time in PA2 or Lamport's scalar
+    ///< time in PA3
 } __attribute__((packed)) MessageHeader;
 
 enum {
@@ -53,7 +53,7 @@ enum {
 typedef struct {
     MessageHeader s_header;
     char s_payload[MAX_PAYLOAD_LEN]; ///< Must be used as a buffer, unused "tail"
-                                     ///< shouldn't be transfered
+    ///< shouldn't be transfered
 } __attribute__((packed)) Message;
 
 //------------------------------------------------------------------------------
@@ -74,7 +74,7 @@ int send(void * self, local_id dst, const Message * msg);
  *
  * Send msg to all other processes including parrent.
  * Should stop on the first error.
- * 
+ *
  * @param self    Any data structure implemented by students to perform I/O
  * @param msg     Message to multicast.
  *

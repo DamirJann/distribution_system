@@ -45,7 +45,20 @@ struct process_info {
 static const char *const log_received_all_ack_fmt =
         "%d: process %1d received all ACK messages\n";
 
-void log(struct log_files, char *, Log_level);
+static const char *const log_process_finished =
+        "%d: process %d finished\n";
+
+static const char *messageTypes[] = {
+        [STARTED] = "STARTED",
+        [DONE] = "DONE",
+        [ACK] = "ACK",
+        [STOP] = "STOP",
+        [TRANSFER] = "TRANSFER",
+        [BALANCE_HISTORY] = "BALANCE_HISTORY",
+        [CS_REQUEST] = "CS_REQUEST",
+};
+
+
 
 Message create_default_message(MessageType type);
 

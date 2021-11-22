@@ -10,30 +10,14 @@
 #include "banking.h"
 #include "common.h"
 
-void log(struct log_files log_files, char* log_message, Log_level log_level) {
-    switch (log_level) {
-        case DEBUG: {
-            fprintf(log_files.event_log, "\n    * %s\n\n", log_message);
-            fprintf(stdout, "\n    * %s\n\n", log_message);
-            break;
-        }
-        case INFO: {
-            fprintf(log_files.event_log, "%s\n", log_message);
-            fprintf(stdout, "%s", log_message);
-            break;
-        }
-        default:
-            break;
-    }
-}
-
 Message create_default_message(MessageType type){
     return (Message) {
             .s_header.s_type = type,
             .s_header.s_local_time = get_physical_time(),
             .s_header.s_magic = MESSAGE_MAGIC,
             // write message to payload and its size to payload_len
-            .s_header.s_payload_len = 0
+            .s_header.s_payload_len = 0,
+            .s_payload = ""
     };
 }
 
