@@ -17,6 +17,11 @@ void addNewBalanceState(BalanceHistory *balance_history, balance_t balance) {
     balance_history->s_history_len++;
 }
 
+void handle_transfer_in_message(const local_id local_pid, struct pipe_table pipe_table, struct log_files log_files,
+                                balance_t *init_balance, const Message received_msg){
+
+}
+
 void handle_transfer_message(const local_id local_pid, struct pipe_table pipe_table, struct log_files log_files,
                              balance_t *init_balance, const Message received_msg) {
 
@@ -42,6 +47,8 @@ void handle_transfer_message(const local_id local_pid, struct pipe_table pipe_ta
 
 
 }
+
+
 
 void handle_stop_message(const local_id local_pid, struct pipe_table pipe_table, struct log_files log_files){
     Message done_msg = create_default_message(DONE);
