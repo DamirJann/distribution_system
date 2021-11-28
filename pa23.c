@@ -11,7 +11,6 @@
 #include <string.h>
 
 int send_multicast(void *self, const Message *msg) {
-    fprintf(stdout, "START SEND MULTICAST\n");
     struct pipe_table pipe_table = ((struct process_info *) self)->pipe_table;
     local_id from = ((struct process_info *) self)->id;
     for (local_id i = 0; i < pipe_table.size; i++) {
@@ -33,7 +32,6 @@ int send(void *self, local_id dst, const Message *msg) {
                 msg->s_payload, dst);
         return -1;
     } else {
-        printf("%d: process %d  SUCCESSFULLY SENT msg('%s', %s) to %hhd process\n", get_lamport_time(), from, msg->s_payload, messageTypes[msg->s_header.s_type], dst);
         return 0;
     }
 }
@@ -43,7 +41,6 @@ int receive(void *self, local_id from, Message *msg) {
     local_id to = ((struct process_info *) self)->id;
     int fd = pipe_table.data[from][to].read_fds;
     if (read(fd, &msg->s_header, sizeof(MessageHeader)) < 1) {
-//        fprintf(stderr, "LOG [%d]: FAILED to RECEIVE HEADER from %hhd process by %d file\n", to, from, fd);
         return -1;
     }
 
@@ -51,8 +48,6 @@ int receive(void *self, local_id from, Message *msg) {
         fprintf(stderr, "%d: %d FAILED to RECEIVE PAYLOAD from %hhd process\n", get_lamport_time(), to, from);
         return -1;
     }
-
-    printf("%d: process %d SUCCESSFULLY RECEIVED msg('%s', %s) from %hhd process\n", get_lamport_time(), to, msg->s_payload, messageTypes[msg->s_header.s_type], from);
     return 0;
 }
 

@@ -18,11 +18,11 @@ void addNewBalanceState(BalanceHistory *balance_history, balance_t balance) {
 }
 
 
-void fill_balance_history_before_now(BalanceHistory* balance_history){
+void fill_balance_history_till_now(BalanceHistory* balance_history){
     timestamp_t previous_timestamp = balance_history->s_history[balance_history->s_history_len-1].s_time;
     balance_t last_balance = balance_history->s_history[previous_timestamp].s_balance;
 
-    for (int i = previous_timestamp + 1; i < get_lamport_time(); i++){
+    for (int i = previous_timestamp + 1; i <= get_lamport_time(); i++){
         addNewBalanceState(balance_history, last_balance);
     }
 }
@@ -41,11 +41,18 @@ void handle_transfer_in_message(const local_id local_pid, struct pipe_table pipe
 }
 
 void handle_transfer_out_message(const local_id local_pid, struct pipe_table pipe_table, struct log_files log_files,
-                                 BalanceHistory *balance_history, balance_t *init_balance, TransferOrder transfer_order){
+                                 BalanceHistory *balance_history, balance_t *init_balance, TransferOrder transfer_order, Message message){
     // event
     increase_lamport_counter();
 
     *init_balance += transfer_order.s_amount;
+
+    for (balance_t i = message.s_header.s_local_time; i <= get_lamport_time(); i++){
+        balance_history->s_history[i].s_balance_pending_in += transfer_order.s_amount;
+    }
+
+
+
     Message ack_msg = create_default_message(ACK);
     send((void *) &(struct process_info) {local_pid, pipe_table}, PARENT_ID, &ack_msg);
 
@@ -61,7 +68,7 @@ void handle_transfer_message(const local_id local_pid, struct pipe_table pipe_ta
     if (transfer_order.s_src == local_pid) {
         handle_transfer_in_message(local_pid, pipe_table, log_files, balance_history, init_balance, received_msg, transfer_order);
     } else {
-        handle_transfer_out_message(local_pid, pipe_table, log_files, balance_history, init_balance, transfer_order);
+        handle_transfer_out_message(local_pid, pipe_table, log_files, balance_history, init_balance, transfer_order, received_msg);
     }
 }
 
@@ -87,7 +94,7 @@ void start_subprocess_work(local_id local_pid, struct pipe_table pipe_table, str
         // event happened
         increase_lamport_counter();
 
-        fill_balance_history_before_now(balance_history);
+        fill_balance_history_till_now(balance_history);
 
         switch (msg.s_header.s_type) {
             case STOP: {
