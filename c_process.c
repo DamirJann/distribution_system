@@ -18,7 +18,7 @@ void addNewBalanceState(BalanceHistory *balance_history, balance_t balance) {
 }
 
 
-void fill_balance_history_till_now(BalanceHistory* balance_history){
+void fill_balance_history_before_now(BalanceHistory* balance_history){
     timestamp_t previous_timestamp = balance_history->s_history[balance_history->s_history_len-1].s_time;
     balance_t last_balance = balance_history->s_history[previous_timestamp].s_balance;
 
@@ -28,7 +28,7 @@ void fill_balance_history_till_now(BalanceHistory* balance_history){
 }
 
 void handle_transfer_in_message(const local_id local_pid, struct pipe_table pipe_table, struct log_files log_files,
-                             BalanceHistory *balance_history, balance_t *init_balance, Message received_msg, TransferOrder transfer_order){
+                                BalanceHistory *balance_history, balance_t *init_balance, Message received_msg, TransferOrder transfer_order){
     // event
     increase_lamport_counter();
     received_msg.s_header.s_local_time = get_lamport_time();
@@ -41,23 +41,23 @@ void handle_transfer_in_message(const local_id local_pid, struct pipe_table pipe
 }
 
 void handle_transfer_out_message(const local_id local_pid, struct pipe_table pipe_table, struct log_files log_files,
-                                 BalanceHistory *balance_history, balance_t *init_balance, TransferOrder transfer_order, Message message){
+                                 BalanceHistory *balance_history, balance_t *init_balance, TransferOrder transfer_order, Message msg){
+
+
     // event
     increase_lamport_counter();
 
     *init_balance += transfer_order.s_amount;
-
-    for (balance_t i = message.s_header.s_local_time; i <= get_lamport_time(); i++){
-        balance_history->s_history[i].s_balance_pending_in += transfer_order.s_amount;
-    }
-
-
-
     Message ack_msg = create_default_message(ACK);
     send((void *) &(struct process_info) {local_pid, pipe_table}, PARENT_ID, &ack_msg);
 
     fprintf(log_files.event_log, log_transfer_in_fmt, get_lamport_time(), local_pid, transfer_order.s_amount, transfer_order.s_src);
     fprintf(stdout, log_transfer_in_fmt, get_lamport_time(), local_pid, transfer_order.s_amount, transfer_order.s_src);
+
+
+    for (timestamp_t i = msg.s_header.s_local_time; i < get_lamport_time(); i++){
+        balance_history->s_history[i].s_balance_pending_in += transfer_order.s_amount;
+    }
 }
 
 void handle_transfer_message(const local_id local_pid, struct pipe_table pipe_table, struct log_files log_files,
@@ -84,9 +84,9 @@ void handle_stop_message(const local_id local_pid, struct pipe_table pipe_table,
 void start_subprocess_work(local_id local_pid, struct pipe_table pipe_table, struct log_files log_files,
                            balance_t init_balance, BalanceHistory *balance_history) {
     balance_t current_balance = init_balance;
-    bool is_stop_not_received = true;
+    bool is_stopped_not_received = true;
 
-    while (is_stop_not_received) {
+    while (is_stopped_not_received) {
         Message msg;
         receive_any((void *) &(struct process_info) {local_pid, pipe_table}, &msg);
 
@@ -94,12 +94,12 @@ void start_subprocess_work(local_id local_pid, struct pipe_table pipe_table, str
         // event happened
         increase_lamport_counter();
 
-        fill_balance_history_till_now(balance_history);
+        fill_balance_history_before_now(balance_history);
 
         switch (msg.s_header.s_type) {
             case STOP: {
                 handle_stop_message(local_pid, pipe_table, log_files);
-                is_stop_not_received = false;
+                is_stopped_not_received = false;
                 break;
             }
             case TRANSFER: {
@@ -145,4 +145,3 @@ void start_c_subprocess(local_id local_pid, int parent_pid, struct pipe_table pi
     fprintf(stdout, log_process_finished, get_lamport_time(), local_pid);
 
 }
-

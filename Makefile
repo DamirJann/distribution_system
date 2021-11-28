@@ -7,7 +7,7 @@ all: pa23.out
 
 run: all
 	export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$(pwd -P)"
-	LD_PRELOAD="$(shell pwd -P)/libruntime.so" ./pa23.out -p 2 10 10 10 10 10 10 10 10 10 10 10 10
+	LD_PRELOAD="$(shell pwd -P)/libruntime.so" ./pa23.out -p 3 10 20 30 40 50
 clean:
 	rm pa23.out
 

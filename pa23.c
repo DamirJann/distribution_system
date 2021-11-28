@@ -48,6 +48,7 @@ int receive(void *self, local_id from, Message *msg) {
         fprintf(stderr, "%d: %d FAILED to RECEIVE PAYLOAD from %hhd process\n", get_lamport_time(), to, from);
         return -1;
     }
+
     return 0;
 }
 
@@ -107,13 +108,6 @@ int create_subprocesses(struct pipe_table pipe_table, struct log_files log_files
     return 0;
 }
 
-void test(){
-    TransferOrder  transferOrder = (TransferOrder) {3,5,6};
-    Message  msg = (Message){ .s_header.s_payload_len = sizeof(transferOrder)};
-    memcpy((void*) msg.s_payload, (void*) &transferOrder, msg.s_header.s_payload_len);
-    fprintf(stdout, "(%s)", msg.s_payload);
-}
-
 int main(int argc, char **argv) {
 
 
@@ -149,5 +143,4 @@ int main(int argc, char **argv) {
     destroy_balance_t_array(init_balance);
 
     return 0;
-
 }
