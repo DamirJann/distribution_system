@@ -1,7 +1,3 @@
-//
-// Created by damire on 14.10.2021.
-//
-#include <time.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
@@ -10,16 +6,46 @@
 #include "banking.h"
 #include "common.h"
 
+timestamp_t current_lamport_time = 0;
+
+void increase_lamport_counter(){
+    current_lamport_time++;
+}
+
+void sync_lamport_time_with_another_process(timestamp_t incoming_msg){
+    if (incoming_msg > current_lamport_time){
+        current_lamport_time = incoming_msg;
+    }
+}
+
+timestamp_t get_lamport_time(){
+    return current_lamport_time;
+}
+
+
+
+
+int blocked_receive(void *self, local_id from, Message *msg){
+    while (receive(self, from, msg) != 0);
+    return 0;
+}
+
 Message create_default_message(MessageType type){
     return (Message) {
             .s_header.s_type = type,
-            .s_header.s_local_time = get_physical_time(),
+            .s_header.s_local_time = get_lamport_time(),
             .s_header.s_magic = MESSAGE_MAGIC,
-            // write message to payload and its size to payload_len
             .s_header.s_payload_len = 0,
             .s_payload = ""
     };
 }
+
+TransferOrder retrieve_from_message(Message message){
+    TransferOrder transfer_order;
+    memcpy((void*) &transfer_order, (void*) message.s_payload, message.s_header.s_payload_len);
+    return transfer_order;
+}
+
 
 struct pipe_table create_pipe_table(local_id process_count) {
     struct pipe_table pipe_table;
@@ -102,3 +128,4 @@ balance_t * create_balance_t_array(local_id size){
 void destroy_balance_t_array(balance_t* arr){
     free(arr);
 }
+

@@ -2,12 +2,16 @@
 // Created by damire on 14.10.2021.
 //
 
+#include <string.h>
 #include "banking.h"
+
 #ifndef LAB1_AUXILIARY_H
 #define LAB1_AUXILIARY_H
 
 #endif //LAB1_AUXILIARY_H
 
+void increase_lamport_counter();
+void sync_lamport_time_with_another_process(timestamp_t);
 
 typedef enum {
     DEBUG,
@@ -58,7 +62,9 @@ static const char *messageTypes[] = {
         [CS_REQUEST] = "CS_REQUEST",
 };
 
+TransferOrder retrieve_from_message(Message);
 
+int blocked_receive(void *, local_id, Message *);
 
 Message create_default_message(MessageType type);
 

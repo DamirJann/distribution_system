@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <stdlib.h>
-#include <wait.h>
 #include "ipc.h"
 #include "banking.h"
 #include "auxiliary.h"
@@ -9,7 +8,6 @@
 #include "k_process.h"
 #include <fcntl.h>
 #include <getopt.h>
-#include "pa2345.h"
 #include <string.h>
 
 int send_multicast(void *self, const Message *msg) {
@@ -31,11 +29,11 @@ int send(void *self, local_id dst, const Message *msg) {
     int fd = pipe_table.data[from][dst].write_fds;
 
     if (write(fd, msg, msg->s_header.s_payload_len + sizeof(MessageHeader)) == -1) {
-        fprintf(stderr, "LOG [%d]: FAILED to SENT msg = %s to %hhd\n", from,
+        fprintf(stderr, "%d: process %d FAILED to SENT msg = %s to %hhd\n", get_lamport_time(), from,
                 msg->s_payload, dst);
         return -1;
     } else {
-        printf("%d: %d process SUCCESSFULLY SENT msg('%s') with type= %s to %hhd process\n", get_physical_time(), from, msg->s_payload, messageTypes[msg->s_header.s_type], dst);
+        printf("%d: process %d  SUCCESSFULLY SENT msg('%s', %s) to %hhd process\n", get_lamport_time(), from, msg->s_payload, messageTypes[msg->s_header.s_type], dst);
         return 0;
     }
 }
@@ -50,11 +48,11 @@ int receive(void *self, local_id from, Message *msg) {
     }
 
     if (read(fd, msg->s_payload, msg->s_header.s_payload_len) == -1) {
-        fprintf(stderr, "LOG [%d]: FAILED to RECEIVE PAYLOAD from %hhd process\n", to, from);
+        fprintf(stderr, "%d: %d FAILED to RECEIVE PAYLOAD from %hhd process\n", get_lamport_time(), to, from);
         return -1;
     }
 
-    printf("LOG [%d]: SUCCESSFULLY RECEIVED msg('%s') with type = %s from %hhd process\n", to, msg->s_payload, messageTypes[msg->s_header.s_type], from);
+    printf("%d: process %d SUCCESSFULLY RECEIVED msg('%s', %s) from %hhd process\n", get_lamport_time(), to, msg->s_payload, messageTypes[msg->s_header.s_type], from);
     return 0;
 }
 

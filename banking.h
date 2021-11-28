@@ -84,7 +84,7 @@ void transfer(void * parent_data, local_id src, local_id dst, balance_t amount);
  */
 void bank_robbery(void * parent_data, local_id max_id);
 
-/** 
+/**
  * Returs the value of Lamport's clock.
  */
 timestamp_t get_lamport_time();
@@ -96,7 +96,7 @@ timestamp_t get_lamport_time();
 timestamp_t get_physical_time();
 
 /** Pretty print for BalanceHistories.
- * 
+ *
  */
 void print_history(const AllHistory * history);
 
