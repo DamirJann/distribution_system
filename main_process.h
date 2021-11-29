@@ -3,4 +3,4 @@
 
 #endif //DISTRIBUTION_SYSTEM_K_PROCESS_H
 
-void start_k_process(local_id, struct log_files, struct pipe_table);
+void start_main_process(local_id, struct log_files, struct pipe_table);
