@@ -3,13 +3,15 @@
 //
 
 #include <string.h>
-#include "banking.h"
+#include <stdbool.h>
+#include "ipc.h"
 
 #ifndef LAB1_AUXILIARY_H
 #define LAB1_AUXILIARY_H
 
 #endif //LAB1_AUXILIARY_H
 
+timestamp_t get_lamport_time();
 void increase_lamport_counter();
 void sync_lamport_time_with_another_process(timestamp_t);
 
@@ -34,13 +36,6 @@ struct pipe_table {
     struct custom_pipe **data;
 };
 
-struct transfer_info {
-    struct pipe_table pipe_table;
-    local_id recipient;
-    balance_t amount;
-};
-
-
 struct process_info {
     local_id id;
     struct pipe_table pipe_table;
@@ -62,7 +57,6 @@ static const char *messageTypes[] = {
         [CS_REQUEST] = "CS_REQUEST",
 };
 
-TransferOrder retrieve_from_message(Message);
 
 int blocked_receive(void *, local_id, Message *);
 
@@ -79,7 +73,3 @@ void print_pipes_table(local_id, FILE *, struct pipe_table);
 int open_log_files(struct log_files *);
 
 int close_log_files(struct log_files);
-
-balance_t *create_balance_t_array(local_id);
-
-void destroy_balance_t_array(balance_t *);

@@ -3,7 +3,6 @@
 #include <stdlib.h>
 #include "ipc.h"
 #include "auxiliary.h"
-#include "banking.h"
 #include "common.h"
 
 timestamp_t current_lamport_time = 0;
@@ -39,13 +38,6 @@ Message create_default_message(MessageType type){
             .s_payload = ""
     };
 }
-
-TransferOrder retrieve_from_message(Message message){
-    TransferOrder transfer_order;
-    memcpy((void*) &transfer_order, (void*) message.s_payload, message.s_header.s_payload_len);
-    return transfer_order;
-}
-
 
 struct pipe_table create_pipe_table(local_id process_count) {
     struct pipe_table pipe_table;
@@ -116,16 +108,3 @@ void close_extra_pipe_by_subprocess(local_id pid, struct pipe_table *pipe_table)
         }
     }
 }
-
-balance_t * create_balance_t_array(local_id size){
-    balance_t * arr = malloc(sizeof(balance_t) * size);
-    for (local_id i = 0; i < size; i++){
-        arr[i] = 0;
-    }
-    return arr;
-}
-
-void destroy_balance_t_array(balance_t* arr){
-    free(arr);
-}
-

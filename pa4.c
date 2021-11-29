@@ -2,13 +2,13 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include "ipc.h"
-#include "banking.h"
 #include "auxiliary.h"
-#include "c_process.h"
-#include "k_process.h"
+#include "process.h"
+#include "main_process.h"
 #include <fcntl.h>
 #include <getopt.h>
 #include <string.h>
+#include <stdbool.h>
 
 int send_multicast(void *self, const Message *msg) {
     fprintf(stdout, "START SEND MULTICAST\n");
@@ -94,16 +94,16 @@ int create_pipes(struct pipe_table *pipe_table) {
     return 0;
 }
 
-int create_subprocesses(struct pipe_table pipe_table, struct log_files log_files, balance_t *init_balance) {
+int create_subprocesses(struct pipe_table pipe_table, struct log_files log_files) {
     int parent_pid = getpid();
     for (local_id i = 1; i < pipe_table.size; i++) {
         int fork_res = fork();
         if (fork_res == 0) {
-            start_c_subprocess(i, parent_pid, pipe_table, log_files, init_balance[i - 1]);
+            start_process(i, parent_pid, pipe_table, log_files);
             break;
         } else if (fork_res > 0) {
             if (i == pipe_table.size - 1) {
-                start_k_process(PARENT_ID, log_files, pipe_table);
+                start_main_process(PARENT_ID, log_files, pipe_table);
             }
         } else {
             return -1;
@@ -112,46 +112,43 @@ int create_subprocesses(struct pipe_table pipe_table, struct log_files log_files
     return 0;
 }
 
-void test(){
-    TransferOrder  transferOrder = (TransferOrder) {3,5,6};
-    Message  msg = (Message){ .s_header.s_payload_len = sizeof(transferOrder)};
-    memcpy((void*) msg.s_payload, (void*) &transferOrder, msg.s_header.s_payload_len);
-    fprintf(stdout, "(%s)", msg.s_payload);
-}
-
-int main(int argc, char **argv) {
-
-
+void parse_argc(int argc, char **argv, local_id *process_count, bool *is_mutex_mode) {
     if (getopt(argc, argv, "p") == -1) {
         perror("LOG: FAILED to PARSE p parameter");
         exit(EXIT_FAILURE);
     }
+    *process_count = (local_id) strtol(argv[optind], NULL, 10);
 
-    local_id c_subprocess_count = (local_id) strtol(argv[optind], NULL, 10);
-
-    balance_t *init_balance = create_balance_t_array(c_subprocess_count);
-
-    for (int i = 0; i < c_subprocess_count; i++) {
-        init_balance[i] = (balance_t) strtol(argv[i + optind + 1], NULL, 10);
+    if (getopt(argc, argv, "mutexl") == -1){
+        *is_mutex_mode = false;
+    } else{
+        *is_mutex_mode = true;
     }
+}
+
+int main(int argc, char **argv) {
+
+    local_id process_count;
+    bool is_mutex_mode;
+
+    parse_argc(argc, argv, &process_count, &is_mutex_mode);
+    printf("%d, %d\n",process_count, is_mutex_mode);
 
     struct log_files log_files;
     if (open_log_files(&log_files) != 0) {
         perror("LOG: FAILED to CREATE LOG files");
     }
 
-    struct pipe_table pipe_table = create_pipe_table((local_id) (c_subprocess_count + 1));
+    struct pipe_table pipe_table = create_pipe_table((local_id) (process_count + 1));
     if (create_pipes(&pipe_table) != 0) {
         perror("LOG: CREATION of a PIPE TABLE was UNSUCCESSFUL\n");
         exit(EXIT_FAILURE);
     }
 
-    if (create_subprocesses(pipe_table, log_files, init_balance) != 0) {
+    if (create_subprocesses(pipe_table, log_files) != 0) {
         perror("LOG: CREATION of a CHILD PROCESS was UNSUCCESSFUL\n");
         exit(EXIT_FAILURE);
     }
-
-    destroy_balance_t_array(init_balance);
 
     return 0;
 
