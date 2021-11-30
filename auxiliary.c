@@ -7,29 +7,92 @@
 
 timestamp_t current_lamport_time = 0;
 
-void increase_lamport_counter(){
+void increase_lamport_counter() {
     current_lamport_time++;
 }
 
-void sync_lamport_time_with_another_process(timestamp_t incoming_msg){
-    if (incoming_msg > current_lamport_time){
+void sync_lamport_time_after_receiving(timestamp_t incoming_msg) {
+    if (incoming_msg > current_lamport_time) {
         current_lamport_time = incoming_msg;
+    }
+    increase_lamport_counter();
+}
+
+void sync_lamport_time_before_sending() {
+    increase_lamport_counter();
+}
+
+
+
+struct queue_elem *create_queue_elem(struct process_request new_process_request) {
+    struct queue_elem *new_elem = malloc(sizeof(struct queue_elem));
+    new_elem->next = NULL;
+    new_elem->process_request = new_process_request;
+    return new_elem;
+}
+
+struct replicated_queue create_replicated_queue() {
+    return (struct replicated_queue) {
+            .head = create_queue_elem((struct process_request){.process_id = -1, .lamport_time = -1}),
+            .size = 0
+    };
+}
+
+int cmp(const struct queue_elem *l, const struct queue_elem *r) {
+    if (l->process_request.lamport_time < r->process_request.lamport_time) return -1;
+    if (l->process_request.lamport_time > r->process_request.lamport_time) return 1;
+
+    if (l->process_request.process_id < r->process_request.process_id) return -1;
+    if (l->process_request.process_id > r->process_request.process_id) return 1;
+
+    return 0;
+}
+
+void print_replicated_queue(struct replicated_queue replicated_queue){
+    struct queue_elem* curr_elem = replicated_queue.head;
+    while (curr_elem != NULL){
+        fprintf(stdout, "(%d, %d) | ", curr_elem->process_request.lamport_time, curr_elem->process_request.process_id);
+        curr_elem = curr_elem->next;
+    }
+    fprintf(stdout, "\n");
+}
+
+void push(struct replicated_queue* queue, struct process_request new_process_request) {
+    struct queue_elem* new_elem = create_queue_elem(new_process_request);
+
+    struct queue_elem* curr_elem = queue->head;
+    while (curr_elem->next != NULL && cmp(curr_elem->next, new_elem) < 0){
+        curr_elem = curr_elem->next;
+    }
+    new_elem->next = curr_elem->next;
+    curr_elem->next = new_elem;
+    queue->size++;
+}
+
+void pop(struct replicated_queue *queue) {
+    struct queue_elem *deleted_elem = queue->head;
+    queue->head = queue->head->next;
+    queue->size--;
+    free(deleted_elem);
+}
+
+void destroy(struct replicated_queue* queue){
+    while (queue->size != 0){
+        pop(queue);
     }
 }
 
-timestamp_t get_lamport_time(){
+
+timestamp_t get_lamport_time() {
     return current_lamport_time;
 }
 
-
-
-
-int blocked_receive(void *self, local_id from, Message *msg){
+int blocked_receive(void *self, local_id from, Message *msg) {
     while (receive(self, from, msg) != 0);
     return 0;
 }
 
-Message create_default_message(MessageType type){
+Message create_default_message(MessageType type) {
     return (Message) {
             .s_header.s_type = type,
             .s_header.s_local_time = get_lamport_time(),
@@ -97,8 +160,7 @@ void close_extra_pipe_by_subprocess(local_id pid, struct pipe_table *pipe_table)
                 close(pipe_table->data[i][j].write_fds);
                 pipe_table->data[i][j].read_fds = -1;
                 pipe_table->data[i][j].write_fds = -1;
-            }
-            else if (i == pid) {
+            } else if (i == pid) {
                 close(pipe_table->data[i][j].read_fds);
                 pipe_table->data[i][j].read_fds = -1;
             } else if (j == pid) {

@@ -13,12 +13,34 @@
 
 timestamp_t get_lamport_time();
 void increase_lamport_counter();
-void sync_lamport_time_with_another_process(timestamp_t);
+void sync_lamport_time_after_receiving(timestamp_t incoming_msg);
+void sync_lamport_time_before_sending();
 
 typedef enum {
     DEBUG,
     INFO
 } Log_level;
+
+struct process_request{
+    timestamp_t lamport_time;
+    local_id process_id;
+};
+
+struct queue_elem{
+    struct process_request process_request;
+    struct queue_elem *next;
+};
+
+struct replicated_queue{
+    struct queue_elem *head;
+    local_id size;
+};
+
+struct replicated_queue create_replicated_queue();
+void pop(struct replicated_queue*);
+void push(struct replicated_queue*, struct process_request);
+void print_replicated_queue(struct replicated_queue);
+void destroy(struct replicated_queue*);
 
 struct log_files {
     Log_level log_level;

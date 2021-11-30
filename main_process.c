@@ -2,10 +2,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <wait.h>
-#include <stdbool.h>
 #include "ipc.h"
 #include "auxiliary.h"
-#include "pa2345.h"
 
 void wait_subprocesses(local_id process_count) {
     for (local_id i = 0; i < process_count; i++) {

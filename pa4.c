@@ -9,6 +9,7 @@
 #include <getopt.h>
 #include <string.h>
 #include <stdbool.h>
+#include <assert.h>
 
 int send_multicast(void *self, const Message *msg) {
     fprintf(stdout, "START SEND MULTICAST\n");
@@ -43,7 +44,6 @@ int receive(void *self, local_id from, Message *msg) {
     local_id to = ((struct process_info *) self)->id;
     int fd = pipe_table.data[from][to].read_fds;
     if (read(fd, &msg->s_header, sizeof(MessageHeader)) < 1) {
-//        fprintf(stderr, "LOG [%d]: FAILED to RECEIVE HEADER from %hhd process by %d file\n", to, from, fd);
         return -1;
     }
 
@@ -94,12 +94,12 @@ int create_pipes(struct pipe_table *pipe_table) {
     return 0;
 }
 
-int create_subprocesses(struct pipe_table pipe_table, struct log_files log_files) {
+int create_processes(struct pipe_table pipe_table, struct log_files log_files, bool is_mutex_mode) {
     int parent_pid = getpid();
     for (local_id i = 1; i < pipe_table.size; i++) {
         int fork_res = fork();
         if (fork_res == 0) {
-            start_process(i, parent_pid, pipe_table, log_files);
+            start_process(i, parent_pid, pipe_table, log_files, is_mutex_mode);
             break;
         } else if (fork_res > 0) {
             if (i == pipe_table.size - 1) {
@@ -126,18 +126,51 @@ void parse_argc(int argc, char **argv, local_id *process_count, bool *is_mutex_m
     }
 }
 
-int main(int argc, char **argv) {
+void test(){
+    {
+        struct replicated_queue replicated_queue = create_replicated_queue();
+        assert(replicated_queue.size == 0);
 
+        push(&replicated_queue, (struct process_request) {.lamport_time = 6, .process_id = 2});
+        push(&replicated_queue, (struct process_request) {.lamport_time = 5, .process_id = 1});
+        push(&replicated_queue, (struct process_request) {.lamport_time = 5, .process_id = 1});
+        push(&replicated_queue, (struct process_request) {.lamport_time = 1, .process_id = 1});
+        push(&replicated_queue, (struct process_request) {.lamport_time = 6, .process_id = 44});
+        push(&replicated_queue, (struct process_request) {.lamport_time = 8, .process_id = 7});
+        push(&replicated_queue, (struct process_request) {.lamport_time = 6, .process_id = 1});
+        push(&replicated_queue, (struct process_request) {.lamport_time = 6, .process_id = 2});
+        push(&replicated_queue, (struct process_request) {.lamport_time = 6, .process_id = 2});
+        push(&replicated_queue, (struct process_request) {.lamport_time = 11, .process_id = 7});
+
+        print_replicated_queue(replicated_queue);
+
+        assert(replicated_queue.size == 10);
+
+        pop(&replicated_queue);
+        assert(replicated_queue.size == 9);
+
+        pop(&replicated_queue);
+        assert(replicated_queue.size == 8);
+
+        push(&replicated_queue, (struct process_request) {.lamport_time = 11, .process_id = 7});
+
+        print_replicated_queue(replicated_queue);
+
+    }
+}
+
+int main(int argc, char **argv) {
     local_id process_count;
     bool is_mutex_mode;
 
     parse_argc(argc, argv, &process_count, &is_mutex_mode);
-    printf("%d, %d\n",process_count, is_mutex_mode);
 
     struct log_files log_files;
     if (open_log_files(&log_files) != 0) {
         perror("LOG: FAILED to CREATE LOG files");
     }
+
+    test();
 
     struct pipe_table pipe_table = create_pipe_table((local_id) (process_count + 1));
     if (create_pipes(&pipe_table) != 0) {
@@ -145,7 +178,7 @@ int main(int argc, char **argv) {
         exit(EXIT_FAILURE);
     }
 
-    if (create_subprocesses(pipe_table, log_files) != 0) {
+    if (create_processes(pipe_table, log_files, is_mutex_mode) != 0) {
         perror("LOG: CREATION of a CHILD PROCESS was UNSUCCESSFUL\n");
         exit(EXIT_FAILURE);
     }
