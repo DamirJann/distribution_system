@@ -12,40 +12,62 @@
 #endif //LAB1_AUXILIARY_H
 
 timestamp_t get_lamport_time();
+
 void increase_lamport_counter();
+
 void sync_lamport_time_after_receiving(timestamp_t incoming_msg);
+
 void sync_lamport_time_before_sending();
+
+static const char *const replicated_queue_log = "replicated_queue.log";
 
 typedef enum {
     DEBUG,
     INFO
 } Log_level;
 
-struct process_request{
+struct process_request {
     timestamp_t lamport_time;
     local_id process_id;
 };
 
-struct queue_elem{
+struct queue_elem {
     struct process_request process_request;
     struct queue_elem *next;
 };
 
-struct replicated_queue{
+struct replicated_queue {
     struct queue_elem *head;
     local_id size;
 };
 
+
+struct queue_elem *create_queue_elem(struct process_request );
+
 struct replicated_queue create_replicated_queue();
-void pop(struct replicated_queue*);
-void push(struct replicated_queue*, struct process_request);
-void print_replicated_queue(struct replicated_queue);
-void destroy(struct replicated_queue*);
+
+struct process_request front(struct replicated_queue);
+
+void pop(struct replicated_queue *);
+
+void push(struct replicated_queue *, struct process_request);
+
+void print_replicated_queue(FILE *file, struct replicated_queue);
+
+void destroy_replicated_queue(struct replicated_queue *);
+
+struct process_request retrieve_from_message(Message);
+
+void write_payload(Message *, struct process_request);
+
+
+int blocked_receive(void *self, local_id from, Message *msg);
 
 struct log_files {
     Log_level log_level;
     FILE *event_log;
     FILE *pipe_log;
+    FILE *replicated_queue_log;
 };
 
 struct custom_pipe {
@@ -63,9 +85,6 @@ struct process_info {
     struct pipe_table pipe_table;
 };
 
-static const char *const log_received_all_ack_fmt =
-        "%d: process %1d received all ACK messages\n";
-
 static const char *const log_process_finished =
         "%d: process %d finished\n";
 
@@ -77,10 +96,9 @@ static const char *messageTypes[] = {
         [TRANSFER] = "TRANSFER",
         [BALANCE_HISTORY] = "BALANCE_HISTORY",
         [CS_REQUEST] = "CS_REQUEST",
+        [CS_REPLY] = "CS_REPLY",
+        [CS_RELEASE] = "CS_RELEASE",
 };
-
-
-int blocked_receive(void *, local_id, Message *);
 
 Message create_default_message(MessageType type);
 

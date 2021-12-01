@@ -2,7 +2,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include "ipc.h"
-#include "auxiliary.h"
+#include "utils.h"
 #include "common.h"
 
 timestamp_t current_lamport_time = 0;
@@ -23,12 +23,22 @@ void sync_lamport_time_before_sending() {
 }
 
 
+struct process_request retrieve_from_message(Message message){
+    struct process_request r;
+    memcpy((void*) &r, (void*) message.s_payload, message.s_header.s_payload_len);
+    return r;
+}
 
 struct queue_elem *create_queue_elem(struct process_request new_process_request) {
     struct queue_elem *new_elem = malloc(sizeof(struct queue_elem));
     new_elem->next = NULL;
     new_elem->process_request = new_process_request;
     return new_elem;
+}
+
+void write_payload(Message* msg, struct process_request request){
+    msg->s_header.s_payload_len = sizeof(request);
+    memcpy((void *) msg->s_payload, (void *) &request, msg->s_header.s_payload_len);
 }
 
 struct replicated_queue create_replicated_queue() {
@@ -48,13 +58,17 @@ int cmp(const struct queue_elem *l, const struct queue_elem *r) {
     return 0;
 }
 
-void print_replicated_queue(struct replicated_queue replicated_queue){
+void print_replicated_queue(FILE * file, struct replicated_queue replicated_queue){
     struct queue_elem* curr_elem = replicated_queue.head;
     while (curr_elem != NULL){
-        fprintf(stdout, "(%d, %d) | ", curr_elem->process_request.lamport_time, curr_elem->process_request.process_id);
+        fprintf(file, "(%d, %d) | ", curr_elem->process_request.lamport_time, curr_elem->process_request.process_id);
         curr_elem = curr_elem->next;
     }
-    fprintf(stdout, "\n");
+    fprintf(file, "\n");
+}
+
+struct process_request front(struct replicated_queue queue){
+    return queue.head->next->process_request;
 }
 
 void push(struct replicated_queue* queue, struct process_request new_process_request) {
@@ -70,18 +84,17 @@ void push(struct replicated_queue* queue, struct process_request new_process_req
 }
 
 void pop(struct replicated_queue *queue) {
-    struct queue_elem *deleted_elem = queue->head;
-    queue->head = queue->head->next;
+    struct queue_elem *deleted_elem = queue->head->next;
+    queue->head->next = deleted_elem->next;
     queue->size--;
     free(deleted_elem);
 }
 
-void destroy(struct replicated_queue* queue){
+void destroy_replicated_queue(struct replicated_queue* queue){
     while (queue->size != 0){
         pop(queue);
     }
 }
-
 
 timestamp_t get_lamport_time() {
     return current_lamport_time;
@@ -134,6 +147,7 @@ void print_pipes_table(local_id pid, FILE *file, struct pipe_table pipe_table) {
 int open_log_files(struct log_files *log_files) {
     log_files->event_log = fopen(events_log, "w");
     log_files->pipe_log = fopen(pipes_log, "w");
+    log_files->replicated_queue_log = fopen(replicated_queue_log, "w");
 
     if (log_files->event_log == NULL || log_files->pipe_log == NULL) {
         return -1;
