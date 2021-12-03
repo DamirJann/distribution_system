@@ -74,6 +74,9 @@ void parse_argc(int argc, char **argv, local_id *process_count, bool *is_mutex_m
                 *process_count = (local_id) strtol(argv[optind], NULL, 10);
                 break;
             }
+            default: {
+                exit(EXIT_FAILURE);
+            }
         }
     }
 

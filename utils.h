@@ -60,6 +60,9 @@ struct process_request retrieve_from_message(Message);
 
 void write_payload(Message *, struct process_request);
 
+bool * create_bool_array(local_id);
+
+void destroy_bool_array(bool*);
 
 int blocked_receive(void *self, local_id from, Message *msg);
 

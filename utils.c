@@ -184,3 +184,15 @@ void close_extra_pipe_by_subprocess(local_id pid, struct pipe_table *pipe_table)
         }
     }
 }
+
+bool * create_bool_array(local_id size){
+    bool * arr = malloc(sizeof(bool) * size);
+    for (local_id i = 0; i < size; i++){
+        arr[i] = false;
+    }
+    return arr;
+}
+
+void destroy_bool_array(bool* arr){
+    free(arr);
+}

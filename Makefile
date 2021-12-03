@@ -7,7 +7,7 @@ all: pa4.out
 
 run: all
 	export LD_LIBRARY_PATH="${LD_LIBRARY_PATH}:$(pwd -P)"
-	LD_PRELOAD="$(shell pwd -P)/libruntime.so" ./pa4.out --mutexl -p 2
+	LD_PRELOAD="$(shell pwd -P)/libruntime.so" ./pa4.out -p 20 --mutexl
 clean:
 	rm pa4.out
 
