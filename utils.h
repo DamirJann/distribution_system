@@ -41,6 +41,7 @@ struct replicated_queue {
     local_id size;
 };
 
+ struct process_request get_by_pid(struct replicated_queue queue, local_id local_pid);
 
 struct queue_elem *create_queue_elem(struct process_request );
 

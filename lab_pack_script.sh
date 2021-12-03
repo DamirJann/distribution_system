@@ -1,8 +1,8 @@
 #!/bin/bash
 clang -std=c99 -Wall -pedantic *.c
-mkdir pa4
-cp ./*.c ./pa4
-cp ./*.h ./pa4
-cp ./libruntime.so ./pa4
-tar -czvf pa4.tar.gz pa4
-rm -rf ./pa4
+mkdir pa5
+cp ./*.c ./pa5
+cp ./*.h ./pa5
+cp ./libruntime.so ./pa5
+tar -czvf pa5.tar.gz pa5
+rm -rf ./pa5

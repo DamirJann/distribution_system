@@ -111,6 +111,8 @@ void test() {
 
         push(&replicated_queue, (struct process_request) {.lamport_time = 11, .process_id = 7});
 
+        assert(get_by_pid(replicated_queue, 44).lamport_time == 6);
+
         print_replicated_queue(stdout, replicated_queue);
 
     }

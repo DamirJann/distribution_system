@@ -71,6 +71,15 @@ struct process_request front(struct replicated_queue queue){
     return queue.head->next->process_request;
 }
 
+struct process_request get_by_pid(struct replicated_queue queue, local_id local_pid){
+    struct queue_elem* curr_elem = queue.head;
+    while (curr_elem->next->process_request.process_id != local_pid){
+        curr_elem = curr_elem->next;
+    }
+    return curr_elem->next->process_request;
+}
+
+
 void push(struct replicated_queue* queue, struct process_request new_process_request) {
     struct queue_elem* new_elem = create_queue_elem(new_process_request);
 

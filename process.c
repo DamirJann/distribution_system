@@ -10,9 +10,8 @@ void start_work_in_critical_section(local_id local_pid, struct log_files log_fil
 
     for (int i = 1; i <= local_pid * 5; i++) {
         char log[256];
-        sprintf(log, log_loop_operation_fmt, local_pid, i, local_pid * 5);
+        snprintf(log, 256, log_loop_operation_fmt, local_pid, i, local_pid * 5);
         print(log);
-        fprintf(stdout, log_loop_operation_fmt, local_pid, i, local_pid * 5);
         fprintf(log_files.event_log, log_loop_operation_fmt, local_pid, i, local_pid * 5);
     }
 
@@ -45,13 +44,14 @@ void send_reply(local_id local_pid, struct pipe_table pipe_table, local_id to) {
 void handle_cs_request(local_id local_pid, struct pipe_table pipe_table,
                        struct replicated_queue *replicated_queue, Message msg, bool is_critical_section_done,
                        bool *df) {
-    struct process_request request = retrieve_from_message(msg);
-    push(replicated_queue, request);
+    struct process_request external_request = retrieve_from_message(msg);
+    push(replicated_queue, external_request);
 
-    if (is_critical_section_done || front(*replicated_queue).process_id != local_pid) {
-        send_reply(local_pid, pipe_table, request.process_id);
+    struct process_request internal_request =  get_by_pid(*replicated_queue, local_pid);
+    if (is_critical_section_done || internal_request.lamport_time > external_request.lamport_time) {
+        send_reply(local_pid, pipe_table, external_request.process_id);
     } else {
-        df[request.process_id] = true;
+        df[external_request.process_id] = true;
     }
 }
 
@@ -65,10 +65,6 @@ void handle_message(local_id local_pid, struct pipe_table pipe_table,
         case CS_REPLY: {
             break;
         }
-        case CS_RELEASE: {
-            pop(replicated_queue);
-            break;
-        }
         case STOP: {
             break;
         }
@@ -80,11 +76,10 @@ void handle_message(local_id local_pid, struct pipe_table pipe_table,
 
 
 void send_deferred_replies(local_id local_pid, struct pipe_table pipe_table, bool *df) {
-    sync_lamport_time_before_sending();
-    Message reply_msg = create_default_message(CS_REPLY);
-
     for (int i = 1; i < pipe_table.size; i++) {
         if (df[i]) {
+            sync_lamport_time_before_sending();
+            Message reply_msg = create_default_message(CS_REPLY);
             send((void *) &(struct process_info) {local_pid, pipe_table}, i, &reply_msg);
             df[i] = false;
         }
@@ -142,8 +137,7 @@ int receive_specific_message(local_id from, struct process_info *process_info, M
 }
 
 
-void
-start_process_work_with_mutual_exclusive(local_id local_pid, struct pipe_table pipe_table, struct log_files log_files) {
+void start_process_work_with_mutual_exclusive(local_id local_pid, struct pipe_table pipe_table, struct log_files log_files) {
     struct replicated_queue replicated_queue = create_replicated_queue();
     bool *df = create_bool_array(pipe_table.size);
 
