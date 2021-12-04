@@ -48,15 +48,19 @@ struct replicated_queue create_replicated_queue() {
     };
 }
 
-int cmp(const struct queue_elem *l, const struct queue_elem *r) {
-    if (l->process_request.lamport_time < r->process_request.lamport_time) return -1;
-    if (l->process_request.lamport_time > r->process_request.lamport_time) return 1;
+int cmp_process_request(struct process_request l, struct process_request r) {
+    if (l.lamport_time < r.lamport_time) return -1;
+    if (l.lamport_time > r.lamport_time) return 1;
 
-    if (l->process_request.process_id < r->process_request.process_id) return -1;
-    if (l->process_request.process_id > r->process_request.process_id) return 1;
-
+    if (l.process_id < r.process_id) return -1;
+    if (l.process_id > r.process_id) return 1;
     return 0;
 }
+
+int cmp_queue_elem(const struct queue_elem* l, const struct queue_elem* r){
+    return cmp_process_request(l->process_request, r->process_request);
+}
+
 
 void print_replicated_queue(FILE * file, struct replicated_queue replicated_queue){
     struct queue_elem* curr_elem = replicated_queue.head;
@@ -84,7 +88,7 @@ void push(struct replicated_queue* queue, struct process_request new_process_req
     struct queue_elem* new_elem = create_queue_elem(new_process_request);
 
     struct queue_elem* curr_elem = queue->head;
-    while (curr_elem->next != NULL && cmp(curr_elem->next, new_elem) < 0){
+    while (curr_elem->next != NULL && cmp_queue_elem(curr_elem->next, new_elem) < 0){
         curr_elem = curr_elem->next;
     }
     new_elem->next = curr_elem->next;

@@ -41,13 +41,16 @@ struct replicated_queue {
     local_id size;
 };
 
- struct process_request get_by_pid(struct replicated_queue queue, local_id local_pid);
+struct process_request get_by_pid(struct replicated_queue queue, local_id local_pid);
 
-struct queue_elem *create_queue_elem(struct process_request );
+struct queue_elem *create_queue_elem(struct process_request);
 
 struct replicated_queue create_replicated_queue();
 
 struct process_request front(struct replicated_queue);
+
+int cmp_queue_elem(const struct queue_elem*, const struct queue_elem*);
+int cmp_process_request(struct process_request, struct process_request);
 
 void pop(struct replicated_queue *);
 
@@ -61,9 +64,9 @@ struct process_request retrieve_from_message(Message);
 
 void write_payload(Message *, struct process_request);
 
-bool * create_bool_array(local_id);
+bool *create_bool_array(local_id);
 
-void destroy_bool_array(bool*);
+void destroy_bool_array(bool *);
 
 int blocked_receive(void *self, local_id from, Message *msg);
 

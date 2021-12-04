@@ -25,7 +25,7 @@ int send(void *self, local_id dst, const Message *msg) {
                 msg->s_payload, dst);
         return -1;
     } else {
-//        printf("%d: process %d SUCCESSFULLY SENT msg('%s', %s) to %hhd process\n", get_lamport_time(), from, msg->s_payload, messageTypes[msg->s_header.s_type], dst);
+        printf("%d: process %d SUCCESSFULLY SENT msg('%s', %s) to %hhd process\n", get_lamport_time(), from, msg->s_payload, messageTypes[msg->s_header.s_type], dst);
         return 0;
     }
 }
@@ -43,7 +43,7 @@ int receive(void *self, local_id from, Message *msg) {
         return -1;
     }
 
-//    printf("%d: process %d SUCCESSFULLY RECEIVED msg('%s', %s) from %hhd process\n", get_lamport_time(), to, msg->s_payload, messageTypes[msg->s_header.s_type], from);
+    printf("%d: process %d SUCCESSFULLY RECEIVED msg('%s', %s) from %hhd process\n", get_lamport_time(), to, msg->s_payload, messageTypes[msg->s_header.s_type], from);
     return 0;
 }
 

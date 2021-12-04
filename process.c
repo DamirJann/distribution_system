@@ -44,11 +44,12 @@ void send_reply(local_id local_pid, struct pipe_table pipe_table, local_id to) {
 void handle_cs_request(local_id local_pid, struct pipe_table pipe_table,
                        struct replicated_queue *replicated_queue, Message msg, bool is_critical_section_done,
                        bool *df) {
+    struct process_request internal_request =  get_by_pid(*replicated_queue, local_pid);
+
     struct process_request external_request = retrieve_from_message(msg);
     push(replicated_queue, external_request);
 
-    struct process_request internal_request =  get_by_pid(*replicated_queue, local_pid);
-    if (is_critical_section_done || internal_request.lamport_time > external_request.lamport_time) {
+    if (is_critical_section_done || cmp_process_request(internal_request, external_request) > 0) {
         send_reply(local_pid, pipe_table, external_request.process_id);
     } else {
         df[external_request.process_id] = true;
@@ -129,7 +130,6 @@ int receive_specific_message(local_id from, struct process_info *process_info, M
     if (msg.s_header.s_type != msg_type) {
         return -1;
     } else {
-        // event happened
         sync_lamport_time_after_receiving(msg.s_header.s_local_time);
         return 0;
     };
