@@ -48,6 +48,8 @@ struct replicated_queue create_replicated_queue();
 
 struct process_request front(struct replicated_queue);
 
+bool is_in_head(struct replicated_queue queue, local_id local_pid);
+
 void pop(struct replicated_queue *);
 
 void push(struct replicated_queue *, struct process_request);
@@ -99,6 +101,7 @@ static const char *messageTypes[] = {
         [CS_REPLY] = "CS_REPLY",
         [CS_RELEASE] = "CS_RELEASE",
 };
+
 
 Message create_default_message(MessageType type);
 
