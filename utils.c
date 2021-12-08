@@ -71,6 +71,13 @@ struct process_request front(struct replicated_queue queue){
     return queue.head->next->process_request;
 }
 
+bool is_in_head(struct replicated_queue queue, local_id local_pid){
+    if (queue.size == 0){
+        return false;
+    }
+    return (queue.head->next->process_request.process_id == local_pid);
+}
+
 void push(struct replicated_queue* queue, struct process_request new_process_request) {
     struct queue_elem* new_elem = create_queue_elem(new_process_request);
 

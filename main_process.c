@@ -17,7 +17,7 @@ void wait_subprocesses(local_id process_count) {
         fprintf(stderr, "LOG: NOT all subprocesses were waited\n");
         exit(EXIT_FAILURE);
     }
-    printf("LOG: SUCCESSFULLY WAITED all subprocesses\n");
+    printf("LOG: .SSFULLY WAITED all subprocesses\n");
 }
 
 void start_main_process(local_id local_pid, struct log_files log_files, struct pipe_table pipe_table) {
