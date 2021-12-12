@@ -75,12 +75,16 @@ struct process_request front(struct replicated_queue queue){
     return queue.head->next->process_request;
 }
 
-struct process_request get_by_pid(struct replicated_queue queue, local_id local_pid){
+struct process_request get_latest_by_pid(struct replicated_queue queue, local_id local_pid){
     struct queue_elem* curr_elem = queue.head;
-    while (curr_elem->next->process_request.process_id != local_pid){
+    struct process_request res;
+    while (curr_elem->next != NULL){
+        if (curr_elem->next->process_request.process_id == local_pid){
+            res = curr_elem->next->process_request;
+        }
         curr_elem = curr_elem->next;
     }
-    return curr_elem->next->process_request;
+    return res;
 }
 
 
