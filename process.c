@@ -4,21 +4,21 @@
 #include "utils.h"
 #include "pa2345.h"
 
-void start_work_in_critical_section(local_id local_pid, struct log_files log_files) {
+void start_work_in_critical_section(local_id local_pid, struct log_files log_files, int counter) {
     fprintf(stdout, "%d: process %d start work in critical section\n", get_lamport_time(), local_pid);
     fprintf(log_files.event_log, "%d: process %d start work in critical section\n", get_lamport_time(), local_pid);
 
-    for (int i = 1; i <= local_pid * 5; i++) {
-        char log[256];
-        snprintf(log, 256, log_loop_operation_fmt, local_pid, i, local_pid * 5);
-        print(log);
-        fprintf(log_files.event_log, log_loop_operation_fmt, local_pid, i, local_pid * 5);
-    }
+    char log[256];
+    sprintf(log, log_loop_operation_fmt, local_pid, counter, local_pid * 5);
+
+    print(log);
+    fprintf(log_files.event_log, log_loop_operation_fmt, local_pid, counter, local_pid * 5);
 
     fprintf(stdout, "%d: process %d end work in critical section\n", get_lamport_time(), local_pid);
     fprintf(log_files.event_log, "%d: process %d end work in critical section\n", get_lamport_time(), local_pid);
 
 }
+
 
 void send_requests_to_critical_section(local_id local_pid, struct pipe_table pipe_table,
                                        struct replicated_queue *replicated_queue) {
@@ -42,14 +42,14 @@ void send_reply(local_id local_pid, struct pipe_table pipe_table, local_id to) {
 }
 
 void handle_cs_request(local_id local_pid, struct pipe_table pipe_table,
-                       struct replicated_queue *replicated_queue, Message msg, bool is_critical_section_done,
+                       struct replicated_queue *replicated_queue, Message msg, bool is_all_work_done,
                        bool *df) {
-    struct process_request internal_request =  get_by_pid(*replicated_queue, local_pid);
+    struct process_request internal_request = get_latest_by_pid(*replicated_queue, local_pid);
 
     struct process_request external_request = retrieve_from_message(msg);
     push(replicated_queue, external_request);
 
-    if (is_critical_section_done || cmp_process_request(internal_request, external_request) > 0) {
+    if (is_all_work_done || cmp_process_request(internal_request, external_request) > 0) {
         send_reply(local_pid, pipe_table, external_request.process_id);
     } else {
         df[external_request.process_id] = true;
@@ -57,10 +57,10 @@ void handle_cs_request(local_id local_pid, struct pipe_table pipe_table,
 }
 
 void handle_message(local_id local_pid, struct pipe_table pipe_table,
-                    struct replicated_queue *replicated_queue, Message msg, bool is_critical_section_done, bool *df) {
+                    struct replicated_queue *replicated_queue, Message msg, bool is_all_work_done, bool *df) {
     switch (msg.s_header.s_type) {
         case CS_REQUEST: {
-            handle_cs_request(local_pid, pipe_table, replicated_queue, msg, is_critical_section_done, df);
+            handle_cs_request(local_pid, pipe_table, replicated_queue, msg, is_all_work_done, df);
             break;
         }
         case CS_REPLY: {
@@ -96,7 +96,9 @@ void send_done(local_id local_pid, struct pipe_table pipe_table) {
 void start_listening(local_id local_pid, struct pipe_table pipe_table, struct log_files log_files,
                      struct replicated_queue *replicated_queue, bool *df) {
     Message msg;
-    bool is_critical_section_done = false;
+    int cs_request_counter = 0;
+    bool is_request_send = false;
+    bool is_all_work_done = false;
     MessageType message_count[] = {
             [CS_REPLY] = 0,
             [CS_REQUEST] = 0,
@@ -104,18 +106,29 @@ void start_listening(local_id local_pid, struct pipe_table pipe_table, struct lo
     };
 
     while (message_count[STOP] == 0) {
+        if ((cs_request_counter < local_pid * 5) && !is_request_send) {
+            send_requests_to_critical_section(local_pid, pipe_table, replicated_queue);
+            cs_request_counter++;
+            is_request_send = true;
+        }
+
         receive_any((void *) &(struct process_info) {local_pid, pipe_table}, &msg);
         sync_lamport_time_after_receiving(msg.s_header.s_local_time);
 
-        handle_message(local_pid, pipe_table, replicated_queue, msg, is_critical_section_done, df);
+        handle_message(local_pid, pipe_table, replicated_queue, msg, is_all_work_done, df);
         message_count[msg.s_header.s_type]++;
 
-        if (!is_critical_section_done && (message_count[CS_REPLY] == pipe_table.size - 2)) {
-            is_critical_section_done = true;
-            start_work_in_critical_section(local_pid, log_files);
+        if (message_count[CS_REPLY] == pipe_table.size - 2) {
+            start_work_in_critical_section(local_pid, log_files, cs_request_counter);
             pop(replicated_queue);
             send_deferred_replies(local_pid, pipe_table, df);
-            send_done(local_pid, pipe_table);
+            message_count[CS_REPLY] = 0;
+            is_request_send = false;
+
+            if (cs_request_counter == local_pid * 5) {
+                is_all_work_done = true;
+                send_done(local_pid, pipe_table);
+            }
         }
 
         fprintf(log_files.replicated_queue_log, "%d: queue of %d process\n", get_lamport_time(), local_pid);
@@ -141,7 +154,6 @@ void start_process_work_with_mutual_exclusive(local_id local_pid, struct pipe_ta
     struct replicated_queue replicated_queue = create_replicated_queue();
     bool *df = create_bool_array(pipe_table.size);
 
-    send_requests_to_critical_section(local_pid, pipe_table, &replicated_queue);
     start_listening(local_pid, pipe_table, log_files, &replicated_queue, df);
 
     destroy_bool_array(df);
@@ -150,7 +162,9 @@ void start_process_work_with_mutual_exclusive(local_id local_pid, struct pipe_ta
 
 void start_process_work_with_no_mutual_exclusive(local_id local_pid, struct pipe_table pipe_table,
                                                  struct log_files log_files) {
-    start_work_in_critical_section(local_pid, log_files);
+    for (int i = 1; i <= local_pid * 5; i++) {
+        start_work_in_critical_section(local_pid, log_files, i);
+    }
 
     sync_lamport_time_before_sending();
     Message release_msg = create_default_message(DONE);
